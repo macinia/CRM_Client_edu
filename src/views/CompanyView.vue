@@ -112,13 +112,13 @@
 
 <script setup>
 import PageLayout from '@/components/PageLayout.vue'
-import { onMounted, reactive, ref } from 'vue'
-import { useUserStore } from '@/stores/users'
+import { onMounted, ref, watch } from 'vue'
+import { useEmployersStore } from '@/stores/employers'
 import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
 
 const isOpenModalCreateEmployer = ref(false)
 
-const UserStore = useUserStore()
+const EmployersStore = useEmployersStore()
 
 const closeModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = false
@@ -128,7 +128,7 @@ const openModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = true
 }
 
-const users = reactive({
+const users = ref({
   teacher: [],
   manager: [],
   superusers: [],
@@ -137,19 +137,19 @@ const users = reactive({
 const sections = ref([
   {
     label: 'Администратор',
-    array: users.superusers,
+    array: users.value.superusers,
     role: 'SUPERUSER',
     isChoosen: true,
   },
   {
     label: 'Менеджер',
-    array: users.manager,
+    array: users.value.manager,
     isChoosen: false,
     role: 'MANAGER',
   },
   {
     label: 'Преподаватель',
-    array: users.teacher,
+    array: users.value.teacher,
     isChoosen: false,
     role: 'TEACHER',
   },
@@ -160,32 +160,33 @@ const selectRole = (array) => {
     el.isChoosen = array === el.role
   })
 }
-
-async function loadUsersFromMsw() {
-  try {
-    const response = await UserStore.getUsers()
-    if (!response.ok) {
-      throw new Error('Network response was not ok')
-    }
-    const data = await response.json()
-    return data.content
-  } catch (error) {
-    console.error('Error fetching users:', error)
+const getUsers = (data) => {
+  let currentUsers = {
+    teacher: [],
+    manager: [],
+    superusers: [],
   }
+  data.forEach(({ user }) => {
+    if (user.role === 'Администратор') {
+      currentUsers.superusers.push(user)
+    } else if (user.role === 'Преподаватель') {
+      currentUsers.teacher.push(user)
+    } else if (user.role === 'Менеджер') {
+      currentUsers.manager.push(user)
+    }
+  })
+  sections.value[0].array=currentUsers.superusers
+  sections.value[1].array=currentUsers.manager
+  sections.value[2].array=currentUsers.teacher
+  users.value = currentUsers
 }
 
-onMounted(() => {
-  loadUsersFromMsw().then((data) => {
-    data.forEach(({ user }) => {
-      if (user.role === 'Администратор') {
-        users.superusers.push(user)
-      } else if (user.role === 'Преподаватель') {
-        users.teacher.push(user)
-      } else if (user.role === 'Менеджер') {
-        users.manager.push(user)
-      }
-    })
-  })
+watch(() => {
+  getUsers(EmployersStore.employers)
+})
+
+onMounted(async () => {
+  getUsers(EmployersStore.employers)
 })
 </script>
 
@@ -256,7 +257,7 @@ onMounted(() => {
 
 .user-role {
   display: flex;
-  justify-content: flex-end; /* Выравниваем весь блок вправо */
+  justify-content: flex-end; 
   margin-left: 360px;
   align-content: center;
 }

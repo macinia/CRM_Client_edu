@@ -13,7 +13,6 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-// Определяем заголовок в зависимости от URL
 const pageTitle = computed(() => {
   const titles = {
     '/company': 'Компания',

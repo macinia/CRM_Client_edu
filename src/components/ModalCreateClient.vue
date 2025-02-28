@@ -71,13 +71,10 @@ const newClientInputs = ref({
   timezone: '',
   hex: '',
   birthDate: '',
-  grade: 0,
-  balance: 0,
+  grade: '',
+  balance: '',
 })
 
-const createClient = () => {
-  console.log('Создан новый клиент:', newClientInputs.value)
-}
 </script>
 
 <style scoped>

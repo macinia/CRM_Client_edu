@@ -3,48 +3,55 @@
     <template #header>
       <span>Новый сотрудник</span>
     </template>
-    <form>
+    <form @submit.prevent="createEmployer()">
       <div class="Input-item">
         <label for=""> Фамилия </label>
-        <input type="text" v-model="newEmployerInputs.surname" />
+        <input type="text" v-model="newEmployerInputs.user.surname" />
       </div>
       <div class="Input-item">
         <label for=""> Имя </label>
-        <input type="text" v-model="newEmployerInputs.name" />
+        <input type="text" v-model="newEmployerInputs.user.name" />
       </div>
       <div class="Input-item">
         <label for=""> Отчество </label>
-        <input type="text" v-model="newEmployerInputs.patronymic" />
+        <input type="text" v-model="newEmployerInputs.user.patronymic" />
       </div>
       <div class="Input-item">
         <label for=""> Номер телефон </label>
-        <input type="tel" v-model="newEmployerInputs.phone" />
+        <input type="tel" v-model="newEmployerInputs.user.phone" />
       </div>
       <div class="Input-item">
         <label for=""> Почта </label>
-        <input type="email" v-model="newEmployerInputs.email" />
+        <input type="email" v-model="newEmployerInputs.user.email" />
       </div>
       <div class="Input-item">
         <label for=""> Часовый Пояс </label>
-        <input type="text" v-model="newEmployerInputs.timezone" />
+        <input type="text" v-model="newEmployerInputs.user.timezone" />
       </div>
       <div class="Input-item">
         <label for=""> Цвет </label>
-        <input type="color" v-model="newEmployerInputs.hex" />
+        <input type="color" v-model="newEmployerInputs.user.hex" />
       </div>
 
       <div class="Input-item">
         <label for=""> Роль в системе </label>
-        <select v-model="newEmployerInputs.role">
+        <select v-model="newEmployerInputs.user.role">
           <option value="">Выберите роль</option>
           <option value="Администратор">Администратор</option>
           <option value="Менеджер">Менеджер</option>
           <option value="Преподаватель">Преподаватель</option>
         </select>
       </div>
+      <div  v-if="newEmployerInputs.user.role == 'Преподаватель' "
+      class="subjects-block">
+        <div  v-for="(subject, index) in newEmployerInputs.subjects" :key="index"  class="Input-item">
+        <label for=""> Предмет </label>
+        <input type="text" v-model="newEmployerInputs.subjects[index]" />
+      </div>
+      </div>
       <div class="Input-item">
         <label for=""> Пароль </label>
-        <input type="password" v-model="newEmployerInputs.password" />
+        <input type="password" v-model="newEmployerInputs.user.password" />
       </div>
 
       <div class="Input-item">
@@ -59,8 +66,10 @@
 <script setup>
 import { ref } from 'vue'
 import ModalLayout from './ModalLayout.vue'
+import { useEmployersStore } from '@/stores/employers'
 
 const emit = defineEmits(['closeModalCreateEmployer'])
+const EmployersStore = useEmployersStore()
 
 const props = defineProps({
   IsOpenModalCreateEmployer: {
@@ -69,20 +78,34 @@ const props = defineProps({
 })
 
 const newEmployerInputs = ref({
-  surname: '',
-  name: '',
-  patronymic: '',
-  email: '',
-  phone: '',
-  timezone: '',
-  role: '',
-  hex: '',
-  password: '',
-  subjects: [],
+  user: {
+    surname: '',
+    name: '',
+    patronymic: '',
+    email: '',
+    phone: '',
+    timezone: '',
+    role: '',
+    hex: '',
+    password: '',
+  },
+  subjects: ["" ],
   notes: '',
 })
 
-const createEmployer = () => {}
+const createEmployer = () => {
+  let newEmployer = {
+    user: newEmployerInputs.value.user,
+    notes: newEmployerInputs.value.notes,
+    subjects: newEmployerInputs.value.subjects,
+  }
+  console.log(newEmployer);
+
+  EmployersStore.createEmployer(newEmployer)
+  emit("closeModalCreateEmployer")
+}
+
+
 </script>
 
 <style scoped>
@@ -90,7 +113,7 @@ const createEmployer = () => {}
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 16px; 
+  margin-bottom: 16px;
 }
 
 .Input-item label {
