@@ -124,6 +124,14 @@ export const useEmployersStore = defineStore('EmployersStore', {
         return this.employers
       }
     },
+    getTeachers() {
+      return async() =>
+      {
+        return this.employers.filter( (employer) =>{
+         return  employer.user.role === 'Преподаватель'
+        } )
+      }
+    }
   },
   actions: {
     async createEmployer(employer) {

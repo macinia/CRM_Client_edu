@@ -1,4 +1,5 @@
 <template>
+
   <header class="header">
     <div class="header-item">
       <img src="@/assets/header.svg" alt="icon" class="header-icon" />
@@ -10,7 +11,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-
 const route = useRoute()
 
 const pageTitle = computed(() => {
@@ -39,7 +39,7 @@ const pageTitle = computed(() => {
   font-size: 40px;
   font-weight: 700;
   text-align: center;
-  padding-top: 4px;
+  align-items: center;
   margin-left: 40px;
   display: flex;
   gap: 8px;
