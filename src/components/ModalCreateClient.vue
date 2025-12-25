@@ -1,9 +1,9 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalCreateClient" @close="$emit('closeModalCreateClient')">
+  <ModalLayout :IsOpen="IsOpenModalCreateClient" @close="$emit('closeModalCreateClient')" >
     <template #header>
       <span>Новый клиент</span>
     </template>
-    <form>
+    <form @submit.prevent="createClient()">
       <div class="Input-item">
         <label> Фамилия </label>
         <input type="text" v-model="newClientInputs.surname" />
@@ -52,6 +52,9 @@
 <script setup>
 import { ref } from 'vue'
 import ModalLayout from './ModalLayout.vue'
+import { useClientsStore } from '@/stores/clients'
+
+const ClientsStore= useClientsStore()
 
 const emit = defineEmits(['closeModalCreateClient'])
 
@@ -74,6 +77,11 @@ const newClientInputs = ref({
   grade: '',
   balance: '',
 })
+const createClient= () => {
+  let newClient = newClientInputs.value
+  ClientsStore.createClient(newClient)
+  emit("closeModalCreateClient")
+}
 
 </script>
 

@@ -55,11 +55,10 @@ const getImageUrl = (logoUrl) => {
   height: 90px;
 }
 
-/* Боковая панель */
 .aside {
   background-color: #d9bddb;
   width: 250px;
-  height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -67,14 +66,15 @@ const getImageUrl = (logoUrl) => {
   padding: 32px 24px;
   font-size: 22px;
   font-weight: 700;
-  text-align: center;
+  align-items: flex-start;
+  justify-content: center;
   display: flex;
   gap: 12px;
   color: black;
   text-decoration: none;
 }
 .nav-icon {
-  width: 27px; /* Размер иконки */
+  width: 27px;
   height: 27px;
   flex-shrink: 0;
 }

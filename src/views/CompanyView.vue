@@ -7,7 +7,6 @@
         Сотрудник
       </button>
     </div>
-
     <div class="copmany-employes">
       <div class="copmany-employes-nav">
         <button
@@ -18,88 +17,36 @@
               sections.forEach((section) => (section.isChoosen = false))
               selectRole(role.array)
               role.isChoosen = true
-            }
-          "
+            } "
           :class="['nav-item', role.isChoosen ? 'selected' : ' ']"
         >
           {{ role.label }} ({{ role.array.length }})
         </button>
       </div>
       <div class="user-list-container">
-        <div
-          :class="['user-list']"
-          :style="{ backgroundColor: user.hex }"
-          v-if="sections.find((el) => el.role === 'TEACHER' && el.isChoosen)"
-          v-for="user in users.teacher"
-          :key="user.id"
-        >
-          <div class="row">
-            <div class="column">
-              <div class="user-style">
-                {{ user.surname }} {{ user.name }} {{ user.patronymic }} (UTC{{ user.timezone }})
-              </div>
-              <div class="row contact">
-                <div>{{ user.phone }}</div>
-                <div class="email">{{ user.email }}</div>
-              </div>
-            </div>
-            <div class="column user-role">
-              <div class="role-container">
-                <span>{{ user.role }}</span>
-                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-              </div>
-            </div>
+        <div v-for="user in selectedUsers"
+         :key="user.id"
+         :style="{ backgroundColor: user.hex }"
+         class="user-card">
+        <div class="card-info">
+          <div class="info-top">
+            <p class="fio"> {{ user.surname }} {{ user.name }} {{ user.patronymic }}  </p>
+             (UTC{{ user.timezone }})
+
           </div>
+          <div class="info-buttom">
+            {{ user.phone }} {{ user.email }}
+          </div>
+
         </div>
-        <div
-          :class="['user-list']"
-          :style="{ backgroundColor: user.hex }"
-          v-if="sections.find((el) => el.role === 'SUPERUSER' && el.isChoosen)"
-          v-for="user in users.superusers"
-          :key="user.id"
-        >
-          <div class="row">
-            <div class="column">
-              <div class="user-style">
-                {{ user.surname }} {{ user.name }} {{ user.patronymic }} (UTC{{ user.timezone }})
-              </div>
-              <div class="row contact">
-                <div>{{ user.phone }}</div>
-                <div class="email">{{ user.email }}</div>
-              </div>
-            </div>
-            <div class="column user-role">
-              <div class="role-container">
-                <span>{{ user.role }}</span>
-                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-              </div>
-            </div>
-          </div>
+        <div class="card-role">
+          {{ user.role }}
         </div>
-        <div
-          :class="['user-list']"
-          :style="{ backgroundColor: user.hex }"
-          v-if="sections.find((el) => el.role === 'MANAGER' && el.isChoosen)"
-          v-for="user in users.manager"
-          :key="user.id"
-        >
-          <div class="row">
-            <div class="column">
-              <div class="user-style">
-                {{ user.surname }} {{ user.name }} {{ user.patronymic }} (UTC{{ user.timezone }})
-              </div>
-              <div class="row contact">
-                <div>{{ user.phone }}</div>
-                <div class="email">{{ user.email }}</div>
-              </div>
-            </div>
-            <div class="column user-role">
-              <div class="role-container">
-                <span>{{ user.role }}</span>
-                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-              </div>
-            </div>
-          </div>
+        <div class="card-action">
+          <button>
+          <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+        </button>
+        </div>
         </div>
       </div>
     </div>
@@ -134,6 +81,7 @@ const users = ref({
   superusers: [],
 })
 
+
 const sections = ref([
   {
     label: 'Администратор',
@@ -155,10 +103,15 @@ const sections = ref([
   },
 ])
 
+const selectedUsers = ref(
+ []
+)
+
 const selectRole = (array) => {
   sections.value.forEach((el) => {
     el.isChoosen = array === el.role
   })
+  selectedUsers.value=array
 }
 const getUsers = (data) => {
   let currentUsers = {
@@ -187,6 +140,7 @@ watch(() => {
 
 onMounted(async () => {
   getUsers(EmployersStore.employers)
+  selectedUsers.value =  sections.value[0].array
 })
 </script>
 
@@ -235,29 +189,65 @@ onMounted(async () => {
   padding: 17px 35px 27px;
 }
 .user-list-container {
-  margin: 0 25px;
-}
-.row {
-  display: flex;
-  flex-direction: row;
-}
-
-.column {
+  padding-top: 28px;
   display: flex;
   flex-direction: column;
+  gap: 28px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+.user-card{
+  height: 130px;
+  gap: 8px;
+  display: flex;
+  padding: 16px 32px;
+  border-radius: 30px;
+  flex-shrink: 0;
+
+}
+.card-info {
+ width: 50%;
+ height: 100%;
+ display: flex;
+ flex-direction: column;
+ justify-content: space-between
 }
 
-.email {
-  margin-left: 20px;
+.info-top{
+  font-weight: 600;
+  font-size: 26px;
+  display: flex;
+  gap: 8px;
 }
+.fio{
+  max-width: 400px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.info-buttom{
+  font-weight: 450;
+  font-size: 24px;
+}
+.card-role{
+  flex-grow: 1;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 28px;
+font-weight: 600;
+}
+.card-action{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20px;
 
-.contact {
-  margin-top: 25px;
 }
 
 .user-role {
   display: flex;
-  justify-content: flex-end; 
+  justify-content: flex-end;
   margin-left: 360px;
   align-content: center;
 }

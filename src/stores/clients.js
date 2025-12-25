@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 
-export const useStudentsStore = defineStore('StudentsStore', {
+export const useClientsStore = defineStore('ClientsStore', {
   state: () => ({
-    students: [
+    clients: [
       {
         id: 0,
         surname: 'Маматова',
@@ -24,7 +24,7 @@ export const useStudentsStore = defineStore('StudentsStore', {
         patronymic: 'Дмитриевич',
         email: 'k-rogach04@gmail.com',
         phone: '+79033256790',
-        timezone: +3,
+        timezone: "+3",
         hex: '#E1DEF7',
         birthDate: '25.03.2004',
         grade: '11',
@@ -48,19 +48,32 @@ export const useStudentsStore = defineStore('StudentsStore', {
     ],
   }),
   getters: {
-    getStudents() {
+    getClients() {
       return async () => {
-        return this.students
+        return this.clients
       }
     },
+    getFioClients()
+    {
+      return async ()=>{
+      let  array= [];
+      this.clients.forEach((client)=> {
+        let fio= `${client.surname} ${client.name} ${client.patronymic}`
+        array.push({
+          id:client.id,
+         fio:fio
+        })
+      })
+      return array
+      }
+    }
   },
   actions: {
-    async createStudent(student) {
-      let currentStudent = student
-      currentStudent.id = this.student .length + 1
-      currentStudent.id = this.student.length + 1
-      this.students.push(student)
-      console.log(this.students);
+    async createClient(client) {
+      let currentClient = client
+      currentClient.id = this.clients.length + 1
+      this.clients.push(client)
     },
   },
+
 })

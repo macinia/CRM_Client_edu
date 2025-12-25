@@ -13,7 +13,7 @@
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Введите ФИО клиента"
+          placeholder="укажите ФИО клиента"
           class="search-input"
         />
         <img src="@/assets/search.svg" class="search-icon" />
@@ -21,46 +21,43 @@
       <button class="filterButton" @click="toggleBalanceSort">Фильтр по балансу</button>
     </div>
 
-    <div class="students-section">
-      <div class="student-list-container">
-        <div
-          v-if="filteredStudents.length"
-          v-for="student in filteredStudents"
-          :key="student.id"
-          :class="['student-card']"
-          :style="{ backgroundColor: student.hex }"
-        >
-          <div class="row">
-            <div class="column">
-              <div class="user-style">
-                {{ student.surname }} {{ student.name }} {{ student.patronymic }} (UTC{{
-                  student.timezone
-                }})
-              </div>
-              <div class="row contact">
-                <div>{{ student.phone }}</div>
-                <div class="email">{{ student.email }}</div>
-              </div>
-            </div>
-            <div class="column student-grade">
-              <div class="role-container">
-                <div class="text-container">
-                  <span class="grade-text">Класс: {{ student.grade }}</span>
-                  <span class="balance-text">Баланс: {{ student.balance }}</span>
-                </div>
-                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-              </div>
-            </div>
+    <div class="clients-section">
+      <div class="client-list-container">
+        <div  v-if="filteredClients.length"
+          v-for="client in filteredClients"
+          :key="client.id"
+          :style="{ backgroundColor: client.hex }"
+          class="client-card">
+        <div class="card-info">
+          <div class="info-top">
+            <p class="fio"> {{ client.surname }} {{ client.name }} {{ client.patronymic }}  </p>
+             (UTC{{ client.timezone }})
+
           </div>
+          <div class="info-buttom">
+            {{ client.phone }} {{ client.email }}
+          </div>
+
         </div>
-        <div v-else class="no-students">Нет студентов</div>
+        <div class="card-client-info">
+         <div> Класс: {{ client.grade }}</div>
+         <div>Баланс: {{ client.balance }}</div>
+          <div>Статус: {{ client.status }}</div>
+        </div>
+        <div class="card-action">
+          <button>
+          <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+        </button>
+        </div>
+        </div >
+        <div v-else class="no-clients">Нет студентов</div>
       </div>
     </div>
 
     <ModalCreateClient
       :IsOpenModalCreateClient="isOpenModalCreateClient"
       @closeModalCreateClient="closeModalCreateClient"
-      @addStudent="addStudent"
+      @addClient="addClient"
     />
   </PageLayout>
 </template>
@@ -69,13 +66,13 @@
 import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateClient from '@/components/ModalCreateClient.vue'
 import { ref, computed, watch, onMounted } from 'vue'
-import { useStudentsStore } from '@/stores/students'
+import { useClientsStore } from '@/stores/clients'
 
 const isOpenModalCreateClient = ref(false)
-const StudentsStore = useStudentsStore()
+const ClientsStore = useClientsStore()
 const searchQuery = ref('')
 const isSortedByBalance = ref(false);
-const students = ref([])
+const clients = ref([])
 
 const closeModalCreateClient = () => {
   isOpenModalCreateClient.value = false
@@ -85,36 +82,36 @@ const openModalCreateClient = () => {
   isOpenModalCreateClient.value = true
 }
 
-const updateStudents = () => {
-  students.value = StudentsStore.students
+const updateClients = () => {
+  clients.value = ClientsStore.clients
 }
 
-const addStudent = (newStudent) => {
-  StudentsStore.createStudent(newStudent)
-  updateStudents()
+const addClient = (newClient) => {
+  ClientsStore.createClient(newClient)
+  updateClients()
 }
 
 const toggleBalanceSort = () => {
   isSortedByBalance.value = !isSortedByBalance.value;
 };
 
-const filteredStudents = computed(() => {
-  let sortedStudents = students.value.filter(student =>
-    `${student.surname} ${student.name} ${student.patronymic}`
+const filteredClients = computed(() => {
+  let sortedClients = clients.value.filter(client =>
+    `${client.surname} ${client.name} ${client.patronymic}`
       .toLowerCase()
       .includes(searchQuery.value.toLowerCase())
   );
 
   if (isSortedByBalance.value) {
-    return sortedStudents.sort((a, b) => a.balance - b.balance);
+    return sortedClients.sort((a, b) => a.balance - b.balance);
   }
 
-  return sortedStudents;
+  return sortedClients;
 });
 
-watch(() => StudentsStore.students, updateStudents, { deep: true })
+watch(() => ClientsStore.clients, updateClients, { deep: true })
 
-onMounted(updateStudents)
+onMounted(updateClients)
 </script>
 
 <style scoped>
@@ -134,10 +131,6 @@ onMounted(updateStudents)
   gap: 8px;
 }
 
-.students-section {
-  margin-top: 16px;
-}
-
 .plus-icon {
   width: 24px;
   height: 24px;
@@ -145,61 +138,72 @@ onMounted(updateStudents)
   padding-top: 4px;
 }
 
-.student-card {
-  margin-top: 24px;
-  height: 131px;
+.clients-section {
+  margin-top: 16px;
+}
+
+.client-card {
+  height: 130px;
+  gap: 8px;
+  display: flex;
+  padding: 16px 32px;
   border-radius: 30px;
-  padding: 17px 35px 27px;
+  flex-shrink: 0;
 }
 
-.student-list-container {
-  margin: 0 25px;
-}
-
-.row {
-  display: flex;
-  flex-direction: row;
-}
-
-.column {
+.client-list-container {
+  padding-top: 20px;
   display: flex;
   flex-direction: column;
+  gap: 28px;
+  max-height: 450px;
+  overflow-y: auto;
 }
 
-.email {
-  margin-left: 20px;
+.card-info {
+ width: 50%;
+ height: 100%;
+ display: flex;
+ flex-direction: column;
+ justify-content: space-between
 }
 
-.contact {
-  margin-top: 25px;
-}
-
-.student-grade {
+.info-top{
+  font-weight: 600;
+  font-size: 26px;
   display: flex;
-  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fio{
+  max-width: 400px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.info-buttom{
+  font-weight: 450;
+  font-size: 24px;
+}
+
+.card-client-info{
+flex-grow: 1;
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+justify-content: center;
+font-size: 20px;
+font-weight: 600;
+width: 100%;
+margin-left: 160px;
+}
+
+.card-action{
+  display: flex;
   align-items: center;
-  margin-left: 360px;
-}
-
-.role-container {
-  display: flex;
-  align-items: center;
-  gap: 220px;
-}
-
-.text-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.grade-text {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.balance-text {
-  font-size: 18px;
-  font-weight: bold;
+  justify-content: center;
+  margin-right: 20px;
 }
 
 .edit-icon {
@@ -209,7 +213,7 @@ onMounted(updateStudents)
   align-self: center;
 }
 
-.no-students {
+.no-clients {
   text-align: center;
   padding: 20px;
   font-size: 18px;
@@ -221,31 +225,35 @@ onMounted(updateStudents)
   justify-content: space-between;
   align-items: center;
   margin: 16px 0;
+  border-bottom: 1px solid #6e6565;
+  padding-bottom: 8px;
+  position: relative;
 }
 
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  background-color: #b49db4;
   border-radius: 17px;
   padding: 5px;
-  width: 350px;
 }
 
 .search-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
+  font-size: 24px;
+  border: 1px solid #802e87;
+  border-radius: 16px;
   outline: none;
-  background-color: #f1f1f1;
-  border-radius: 17px;
+  width: 480px;
+  background-color: transparent;
+  padding: 10px 50px 10px 15px;
 }
 
 .search-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 4px;
+  width: 26px;
+  height: 26px;
+  position: absolute;
+  left: 440px;
 }
+
 .filterButton {
   background-color: #b49db4;
   border-radius: 56px;

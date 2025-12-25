@@ -3,6 +3,7 @@ import CompanyView from '@/views/CompanyView.vue'
 import HomeView from '@/views/HomeView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import  LessonsView from '@/views/LessonsView.vue'
+import FinancesView from '@/views/FinancesView.vue'
 
 
 const router = createRouter({
@@ -22,6 +23,11 @@ const router = createRouter({
       path: '/clients',
       name: 'clients',
       component:  ClientsView ,
+    },
+    {
+      path: '/finances',
+      name: 'finances',
+      component:  FinancesView ,
     },
     {
       path: '/lessons',
