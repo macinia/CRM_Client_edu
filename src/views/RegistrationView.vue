@@ -23,7 +23,7 @@
 
         <p class="reg-info">
           Вы уже зарегистрированы?
-          <router-link class="link" to="/auth"> Войдите в аккаунт </router-link>
+          <router-link class="link" to="/"> Войдите в аккаунт </router-link>
         </p>
         <button class="reg-btn" @click="handleRegister">Зарегистрироваться</button>
       </div>
@@ -157,6 +157,7 @@ const handleRegister = async () => {
   }
 
   const userData = { ...newUser.value }
+  userData.role = 'admin'
   delete userData.confirmPassword
 
   await authStore.registerUser(userData)
