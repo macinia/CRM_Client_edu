@@ -1,47 +1,54 @@
 <template>
   <aside class="aside">
     <div class="aside-item logo">EduKrismach</div>
-    <RouterLink
-      v-for="item in navItems"
-      :key="item.label"
-      :to="item.url"
-      class="aside-item"
-      active-class="active"
-    >
-      <img :src="getImageUrl(item.logoUrl)" class="nav-icon" alt="icon" />
-      {{ item.label }}
-    </RouterLink>
+    <template v-for="item in navItems" :key="item.label">
+      <RouterLink v-if="item.isVisible" :to="item.url" class="aside-item" active-class="active">
+        <img :src="getImageUrl(item.logoUrl)" class="nav-icon" alt="icon" />
+        {{ item.label }}
+      </RouterLink>
+    </template>
   </aside>
 </template>
 
 <script setup>
-const navItems = [
-  {
-    label: 'Компания',
-    logoUrl: 'company.svg',
-    url: '/company',
-  },
-  {
-    label: 'Клиенты',
-    logoUrl: 'clients.svg',
-    url: '/clients',
-  },
-  {
-    label: 'Занятие',
-    logoUrl: 'lesson.svg',
-    url: '/lessons',
-  },
-  {
-    label: 'Отчеты',
-    logoUrl: 'report.svg',
-    url: '/report',
-  },
-  {
-    label: 'Финансы',
-    logoUrl: 'finances.svg',
-    url: '/finances',
-  },
-]
+import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue'
+
+const authStore = useAuthStore()
+const navItems = computed(() => {
+  return [
+    {
+      label: 'Компания',
+      logoUrl: 'company.svg',
+      url: '/company',
+      isVisible: true,
+    },
+    {
+      label: 'Клиенты',
+      logoUrl: 'clients.svg',
+      url: '/clients',
+      isVisible: true,
+    },
+    {
+      label: 'Занятие',
+      logoUrl: 'lesson.svg',
+      url: '/lessons',
+      isVisible: true,
+    },
+    {
+      label: 'Отчеты',
+      logoUrl: 'report.svg',
+      url: '/report',
+      isVisible: authStore.user.role == 'admin' && authStore.user.role == 'manager',
+    },
+    {
+      label: 'Финансы',
+      logoUrl: 'finances.svg',
+      url: '/finances',
+      isVisible: authStore.user.role == 'admin',
+    },
+  ]
+})
 const getImageUrl = (logoUrl) => {
   return new URL(`/src/assets/${logoUrl}`, import.meta.url).href
 }

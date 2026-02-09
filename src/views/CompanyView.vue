@@ -2,7 +2,10 @@
   <PageLayout>
     <div class="company-top">
       <h1>Сотрудники</h1>
-      <button @click="openModalCreateEmployer()">
+      <button
+        @click="openModalCreateEmployer()"
+        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+      >
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Сотрудник
       </button>
@@ -17,36 +20,35 @@
               sections.forEach((section) => (section.isChoosen = false))
               selectRole(role.array)
               role.isChoosen = true
-            } "
+            }
+          "
           :class="['nav-item', role.isChoosen ? 'selected' : ' ']"
         >
           {{ role.label }} ({{ role.array.length }})
         </button>
       </div>
       <div class="user-list-container">
-        <div v-for="user in selectedUsers"
-         :key="user.id"
-         :style="{ backgroundColor: user.hex }"
-         class="user-card">
-        <div class="card-info">
-          <div class="info-top">
-            <p class="fio"> {{ user.surname }} {{ user.name }} {{ user.patronymic }}  </p>
-             (UTC{{ user.timezone }})
-
+        <div
+          v-for="user in selectedUsers"
+          :key="user.id"
+          :style="{ backgroundColor: user.hex }"
+          class="user-card"
+        >
+          <div class="card-info">
+            <div class="info-top">
+              <p class="fio">{{ user.surname }} {{ user.name }} {{ user.patronymic }}</p>
+              (UTC{{ user.timezone }})
+            </div>
+            <div class="info-buttom">{{ user.phone }} {{ user.email }}</div>
           </div>
-          <div class="info-buttom">
-            {{ user.phone }} {{ user.email }}
+          <div class="card-role">
+            {{ user.role }}
           </div>
-
-        </div>
-        <div class="card-role">
-          {{ user.role }}
-        </div>
-        <div class="card-action">
-          <button>
-          <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-        </button>
-        </div>
+          <div class="card-action">
+            <button v-if="authStore.user.role == 'admin'">
+              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -62,9 +64,11 @@ import PageLayout from '@/components/PageLayout.vue'
 import { onMounted, ref, watch } from 'vue'
 import { useEmployersStore } from '@/stores/employers'
 import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const isOpenModalCreateEmployer = ref(false)
 
+const authStore = useAuthStore()
 const EmployersStore = useEmployersStore()
 
 const closeModalCreateEmployer = () => {
@@ -80,7 +84,6 @@ const users = ref({
   manager: [],
   superusers: [],
 })
-
 
 const sections = ref([
   {
@@ -103,15 +106,13 @@ const sections = ref([
   },
 ])
 
-const selectedUsers = ref(
- []
-)
+const selectedUsers = ref([])
 
 const selectRole = (array) => {
   sections.value.forEach((el) => {
     el.isChoosen = array === el.role
   })
-  selectedUsers.value=array
+  selectedUsers.value = array
 }
 const getUsers = (data) => {
   let currentUsers = {
@@ -128,9 +129,9 @@ const getUsers = (data) => {
       currentUsers.manager.push(user)
     }
   })
-  sections.value[0].array=currentUsers.superusers
-  sections.value[1].array=currentUsers.manager
-  sections.value[2].array=currentUsers.teacher
+  sections.value[0].array = currentUsers.superusers
+  sections.value[1].array = currentUsers.manager
+  sections.value[2].array = currentUsers.teacher
   users.value = currentUsers
 }
 
@@ -140,7 +141,7 @@ watch(() => {
 
 onMounted(async () => {
   getUsers(EmployersStore.employers)
-  selectedUsers.value =  sections.value[0].array
+  selectedUsers.value = sections.value[0].array
 })
 </script>
 
@@ -196,53 +197,51 @@ onMounted(async () => {
   max-height: 450px;
   overflow-y: auto;
 }
-.user-card{
+.user-card {
   height: 130px;
   gap: 8px;
   display: flex;
   padding: 16px 32px;
   border-radius: 30px;
   flex-shrink: 0;
-
 }
 .card-info {
- width: 50%;
- height: 100%;
- display: flex;
- flex-direction: column;
- justify-content: space-between
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.info-top{
+.info-top {
   font-weight: 600;
   font-size: 26px;
   display: flex;
   gap: 8px;
 }
-.fio{
+.fio {
   max-width: 400px;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
 }
-.info-buttom{
+.info-buttom {
   font-weight: 450;
   font-size: 24px;
 }
-.card-role{
+.card-role {
   flex-grow: 1;
-display: flex;
-align-items: center;
-justify-content: center;
-font-size: 28px;
-font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
 }
-.card-action{
+.card-action {
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 20px;
-
 }
 
 .user-role {

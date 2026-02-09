@@ -156,8 +156,8 @@ const handleRegister = async () => {
     return
   }
 
-  const userData = { ...newUser.value }
-  userData.role = 'admin'
+  const userData = { ...newUser.value, role: 'admin' }
+
   delete userData.confirmPassword
 
   await authStore.registerUser(userData)

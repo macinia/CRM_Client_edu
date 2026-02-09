@@ -7,7 +7,13 @@
         placeholder="ФИО преподавателя или ученика"
         class="search-input"
       />
-      <button class="add-lesson-btn" @click="openModalCreateLesson">+ Занятие</button>
+      <button
+        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+        class="add-lesson-btn"
+        @click="openModalCreateLesson"
+      >
+        + Занятие
+      </button>
     </div>
 
     <div class="schedule-nav">
@@ -70,7 +76,9 @@
 import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateLesson from '@/components/ModalCreateLesson.vue'
 import { ref, computed, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const isOpenModalCreateLesson = ref(false)
 const searchQuery = ref('')
 const activeTab = ref('schedule')
