@@ -26,8 +26,8 @@ export const useAuthStore = defineStore('AuthStore', {
       if (data) {
         currentUser = JSON.parse(data)
       }
-      let usersArray = mockUsers
-      usersArray.push(currentUser)
+      let usersArray = [...mockUsers]
+      usersArray.push({ ...currentUser })
       currentUser = null
 
       currentUser = usersArray.find((user) => user.email == authData.email)
@@ -36,6 +36,14 @@ export const useAuthStore = defineStore('AuthStore', {
           this.user = currentUser
         }
       }
+    },
+    checkAuthUser() {
+      const data = localStorage.getItem('user')
+      if (data) {
+        this.user = JSON.parse(data)
+        return true
+      }
+      return false
     },
   },
 })

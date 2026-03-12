@@ -2,7 +2,10 @@
   <PageLayout>
     <div class="clients-top">
       <h1>Наши клиенты</h1>
-      <button @click="openModalCreateClient()">
+      <button
+        @click="openModalCreateClient()"
+        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+      >
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Клиент
       </button>
@@ -23,33 +26,31 @@
 
     <div class="clients-section">
       <div class="client-list-container">
-        <div  v-if="filteredClients.length"
+        <div
+          v-if="filteredClients.length"
           v-for="client in filteredClients"
           :key="client.id"
           :style="{ backgroundColor: client.hex }"
-          class="client-card">
-        <div class="card-info">
-          <div class="info-top">
-            <p class="fio"> {{ client.surname }} {{ client.name }} {{ client.patronymic }}  </p>
-             (UTC{{ client.timezone }})
-
+          class="client-card"
+        >
+          <div class="card-info">
+            <div class="info-top">
+              <p class="fio">{{ client.surname }} {{ client.name }} {{ client.patronymic }}</p>
+              (UTC{{ client.timezone }})
+            </div>
+            <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
           </div>
-          <div class="info-buttom">
-            {{ client.phone }} {{ client.email }}
+          <div class="card-client-info">
+            <div>Класс: {{ client.grade }}</div>
+            <div>Баланс: {{ client.balance }}</div>
+            <div>Статус: {{ client.status }}</div>
           </div>
-
+          <div class="card-action">
+            <button v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'">
+              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+            </button>
+          </div>
         </div>
-        <div class="card-client-info">
-         <div> Класс: {{ client.grade }}</div>
-         <div>Баланс: {{ client.balance }}</div>
-          <div>Статус: {{ client.status }}</div>
-        </div>
-        <div class="card-action">
-          <button>
-          <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-        </button>
-        </div>
-        </div >
         <div v-else class="no-clients">Нет студентов</div>
       </div>
     </div>
@@ -67,11 +68,13 @@ import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateClient from '@/components/ModalCreateClient.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useClientsStore } from '@/stores/clients'
+import { useAuthStore } from '@/stores/auth'
 
 const isOpenModalCreateClient = ref(false)
 const ClientsStore = useClientsStore()
+const authStore = useAuthStore()
 const searchQuery = ref('')
-const isSortedByBalance = ref(false);
+const isSortedByBalance = ref(false)
 const clients = ref([])
 
 const closeModalCreateClient = () => {
@@ -92,22 +95,22 @@ const addClient = (newClient) => {
 }
 
 const toggleBalanceSort = () => {
-  isSortedByBalance.value = !isSortedByBalance.value;
-};
+  isSortedByBalance.value = !isSortedByBalance.value
+}
 
 const filteredClients = computed(() => {
-  let sortedClients = clients.value.filter(client =>
+  let sortedClients = clients.value.filter((client) =>
     `${client.surname} ${client.name} ${client.patronymic}`
       .toLowerCase()
-      .includes(searchQuery.value.toLowerCase())
-  );
+      .includes(searchQuery.value.toLowerCase()),
+  )
 
   if (isSortedByBalance.value) {
-    return sortedClients.sort((a, b) => a.balance - b.balance);
+    return sortedClients.sort((a, b) => a.balance - b.balance)
   }
 
-  return sortedClients;
-});
+  return sortedClients
+})
 
 watch(() => ClientsStore.clients, updateClients, { deep: true })
 
@@ -161,45 +164,45 @@ onMounted(updateClients)
 }
 
 .card-info {
- width: 50%;
- height: 100%;
- display: flex;
- flex-direction: column;
- justify-content: space-between
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.info-top{
+.info-top {
   font-weight: 600;
   font-size: 26px;
   display: flex;
   gap: 8px;
 }
 
-.fio{
+.fio {
   max-width: 400px;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
 }
 
-.info-buttom{
+.info-buttom {
   font-weight: 450;
   font-size: 24px;
 }
 
-.card-client-info{
-flex-grow: 1;
-display: flex;
-flex-direction: column;
-align-items: flex-start;
-justify-content: center;
-font-size: 20px;
-font-weight: 600;
-width: 100%;
-margin-left: 160px;
+.card-client-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  width: 100%;
+  margin-left: 160px;
 }
 
-.card-action{
+.card-action {
   display: flex;
   align-items: center;
   justify-content: center;

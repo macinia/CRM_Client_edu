@@ -1,14 +1,22 @@
 <template>
   <div class="app">
-      <RouterView />
-    </div>
+    {{ authStore.user }}
+    <RouterView />
+  </div>
 </template>
 
 <script setup>
+import { useAuthStore } from '@/stores/auth'
+import { onMounted } from 'vue'
+
+const authStore = useAuthStore()
+onMounted(() => {
+  authStore.checkAuthUser()
+})
 </script>
 
 <style>
-.app{
+.app {
   min-height: 100vh;
   height: fit-content;
   width: 100vw;

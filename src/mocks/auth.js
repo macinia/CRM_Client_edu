@@ -23,7 +23,7 @@ export const mockUsers = [
     password: '123456',
     patronymic: 'Романович',
     phone: '+7 (952) 100-3191',
-    role: 'managrer',
+    role: 'manager',
     surname: 'Попов',
   },
 ]
