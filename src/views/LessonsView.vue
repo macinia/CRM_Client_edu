@@ -8,7 +8,7 @@
         class="search-input"
       />
       <button
-        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+        v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
         class="add-lesson-btn"
         @click="openModalCreateLesson"
       >

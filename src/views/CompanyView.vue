@@ -4,7 +4,7 @@
       <h1>Сотрудники</h1>
       <button
         @click="openModalCreateEmployer()"
-        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+        v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
       >
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Сотрудник
@@ -30,22 +30,24 @@
       <div class="user-list-container">
         <div
           v-for="user in selectedUsers"
-          :key="user.id"
-          :style="{ backgroundColor: user.hex }"
+          :key="user.user.id"
+          :style="{ backgroundColor: user.user.hex }"
           class="user-card"
         >
           <div class="card-info">
             <div class="info-top">
-              <p class="fio">{{ user.surname }} {{ user.name }} {{ user.patronymic }}</p>
-              (UTC{{ user.timezone }})
+              <p class="fio">
+                {{ user.user.surname }} {{ user.user.name }} {{ user.user.patronymic }}
+              </p>
+              (UTC{{ user.user.timezone }})
             </div>
-            <div class="info-buttom">{{ user.phone }} {{ user.email }}</div>
+            <div class="info-buttom">{{ user.user.phone }} {{ user.user.email }}</div>
           </div>
           <div class="card-role">
-            {{ user.role }}
+            {{ user.user.role }}
           </div>
           <div class="card-action">
-            <button v-if="authStore.user.role == 'admin'">
+            <button @click="openModalEditEmployer(user)" v-if="authStore.user.role == 'admin'">
               <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
             </button>
           </div>
@@ -56,20 +58,103 @@
       :IsOpenModalCreateEmployer="isOpenModalCreateEmployer"
       @closeModalCreateEmployer="closeModalCreateEmployer"
     />
+    <ModalEditEmployer
+      :isOpenModalEditEmployer="isOpenModalEditEmployer"
+      :employerData="editEmployer"
+      @closeModalEditEmployer="closeModalEditEmployer"
+      @saveEmployer="saveEmployer"
+    />
   </PageLayout>
 </template>
 
 <script setup>
 import PageLayout from '@/components/PageLayout.vue'
-import { onMounted, ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEmployersStore } from '@/stores/employers'
 import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
 import { useAuthStore } from '@/stores/auth'
+import ModalEditEmployer from '@/components/ModalEditEmployer.vue'
+import { storeToRefs } from 'pinia'
 
 const isOpenModalCreateEmployer = ref(false)
+const isOpenModalEditEmployer = ref(false)
+const editEmployer = ref({})
+const selectedRole = ref('SUPERUSER') // Для отслеживания выбранной роли
 
 const authStore = useAuthStore()
 const EmployersStore = useEmployersStore()
+
+const { employers } = storeToRefs(EmployersStore)
+
+// Computed свойства для分组 сотрудников по ролям
+const groupedUsers = computed(() => {
+  const groups = {
+    superusers: [],
+    manager: [],
+    teacher: [],
+  }
+
+  if (employers.value && employers.value.length > 0) {
+    employers.value.forEach((item) => {
+      const user = item.user
+
+      if (user.role === 'Администратор') {
+        groups.superusers.push(item)
+      } else if (user.role === 'Менеджер') {
+        groups.manager.push(item)
+      } else if (user.role === 'Преподаватель') {
+        groups.teacher.push(item)
+      }
+    })
+  }
+
+  return groups
+})
+
+// Секции навигации
+const sections = computed(() => [
+  {
+    label: 'Администратор',
+    array: groupedUsers.value.superusers,
+    role: 'SUPERUSER',
+    isChoosen: selectedRole.value === 'SUPERUSER',
+  },
+  {
+    label: 'Менеджер',
+    array: groupedUsers.value.manager,
+    role: 'MANAGER',
+    isChoosen: selectedRole.value === 'MANAGER',
+  },
+  {
+    label: 'Преподаватель',
+    array: groupedUsers.value.teacher,
+    role: 'TEACHER',
+    isChoosen: selectedRole.value === 'TEACHER',
+  },
+])
+
+// Выбранные пользователи на основе текущей роли
+const selectedUsers = computed(() => {
+  switch (selectedRole.value) {
+    case 'SUPERUSER':
+      return groupedUsers.value.superusers
+    case 'MANAGER':
+      return groupedUsers.value.manager
+    case 'TEACHER':
+      return groupedUsers.value.teacher
+    default:
+      return groupedUsers.value.superusers
+  }
+})
+
+// Функция выбора роли
+const selectRole = (role) => {
+  selectedRole.value = role
+}
+
+const saveEmployer = (updatedEmployer) => {
+  EmployersStore.updateEmployer(updatedEmployer)
+}
 
 const closeModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = false
@@ -79,73 +164,18 @@ const openModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = true
 }
 
-const users = ref({
-  teacher: [],
-  manager: [],
-  superusers: [],
-})
-
-const sections = ref([
-  {
-    label: 'Администратор',
-    array: users.value.superusers,
-    role: 'SUPERUSER',
-    isChoosen: true,
-  },
-  {
-    label: 'Менеджер',
-    array: users.value.manager,
-    isChoosen: false,
-    role: 'MANAGER',
-  },
-  {
-    label: 'Преподаватель',
-    array: users.value.teacher,
-    isChoosen: false,
-    role: 'TEACHER',
-  },
-])
-
-const selectedUsers = ref([])
-
-const selectRole = (array) => {
-  sections.value.forEach((el) => {
-    el.isChoosen = array === el.role
-  })
-  selectedUsers.value = array
-}
-const getUsers = (data) => {
-  let currentUsers = {
-    teacher: [],
-    manager: [],
-    superusers: [],
-  }
-  data.forEach(({ user }) => {
-    if (user.role === 'Администратор') {
-      currentUsers.superusers.push(user)
-    } else if (user.role === 'Преподаватель') {
-      currentUsers.teacher.push(user)
-    } else if (user.role === 'Менеджер') {
-      currentUsers.manager.push(user)
-    }
-  })
-  sections.value[0].array = currentUsers.superusers
-  sections.value[1].array = currentUsers.manager
-  sections.value[2].array = currentUsers.teacher
-  users.value = currentUsers
+const closeModalEditEmployer = () => {
+  isOpenModalEditEmployer.value = false
 }
 
-watch(() => {
-  getUsers(EmployersStore.employers)
-})
-
-onMounted(async () => {
-  getUsers(EmployersStore.employers)
-  selectedUsers.value = sections.value[0].array
-})
+const openModalEditEmployer = (employer) => {
+  isOpenModalEditEmployer.value = true
+  editEmployer.value = employer
+}
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .company-top {
   display: flex;
   justify-content: space-between;

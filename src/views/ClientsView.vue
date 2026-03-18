@@ -4,13 +4,12 @@
       <h1>Наши клиенты</h1>
       <button
         @click="openModalCreateClient()"
-        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+        v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
       >
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Клиент
       </button>
     </div>
-
     <div class="search-container">
       <div class="search-input-wrapper">
         <input
@@ -26,32 +25,35 @@
 
     <div class="clients-section">
       <div class="client-list-container">
-        <div
-          v-if="filteredClients.length"
-          v-for="client in filteredClients"
-          :key="client.id"
-          :style="{ backgroundColor: client.hex }"
-          class="client-card"
-        >
-          <div class="card-info">
-            <div class="info-top">
-              <p class="fio">{{ client.surname }} {{ client.name }} {{ client.patronymic }}</p>
-              (UTC{{ client.timezone }})
+        <template v-for="client in filteredClients" :key="client.id">
+          <div
+            v-if="filteredClients.length"
+            :style="{ backgroundColor: client.hex }"
+            class="client-card"
+          >
+            <div class="card-info">
+              <div class="info-top">
+                <p class="fio">{{ client.surname }} {{ client.name }} {{ client.patronymic }}</p>
+                (UTC{{ client.timezone }})
+              </div>
+              <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
             </div>
-            <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
+            <div class="card-client-info">
+              <div>Класс: {{ client.grade }}</div>
+              <div>Баланс: {{ client.balance }}</div>
+              <div>Статус: {{ statusDic[client.status] }}</div>
+            </div>
+            <div class="card-action">
+              <button
+                @click="openModalEditClient(client)"
+                v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
+              >
+                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+              </button>
+            </div>
           </div>
-          <div class="card-client-info">
-            <div>Класс: {{ client.grade }}</div>
-            <div>Баланс: {{ client.balance }}</div>
-            <div>Статус: {{ client.status }}</div>
-          </div>
-          <div class="card-action">
-            <button v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'">
-              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-            </button>
-          </div>
-        </div>
-        <div v-else class="no-clients">Нет студентов</div>
+          <div v-else class="no-clients">Нет студентов</div>
+        </template>
       </div>
     </div>
 
@@ -60,22 +62,32 @@
       @closeModalCreateClient="closeModalCreateClient"
       @addClient="addClient"
     />
+    <ModalEditClient
+      :IsOpenModalEditClient="isOpenModalEditClient"
+      :clientData="editClient"
+      @closeModalEditClient="closeModalEditClient"
+      @saveClient="saveClient"
+    />
   </PageLayout>
 </template>
 
 <script setup>
 import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateClient from '@/components/ModalCreateClient.vue'
+import ModalEditClient from '@/components/ModalEditClient.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useClientsStore } from '@/stores/clients'
 import { useAuthStore } from '@/stores/auth'
 
 const isOpenModalCreateClient = ref(false)
+const isOpenModalEditClient = ref(false)
 const ClientsStore = useClientsStore()
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const isSortedByBalance = ref(false)
 const clients = ref([])
+const statusDic = { active: 'занимается', unactive: 'не занимается' }
+const editClient = ref({})
 
 const closeModalCreateClient = () => {
   isOpenModalCreateClient.value = false
@@ -87,6 +99,15 @@ const openModalCreateClient = () => {
 
 const updateClients = () => {
   clients.value = ClientsStore.clients
+}
+
+const closeModalEditClient = () => {
+  isOpenModalEditClient.value = false
+}
+
+const openModalEditClient = (client) => {
+  isOpenModalEditClient.value = true
+  editClient.value = client
 }
 
 const addClient = (newClient) => {
@@ -111,6 +132,11 @@ const filteredClients = computed(() => {
 
   return sortedClients
 })
+
+const saveClient = (client) => {
+  ClientsStore.updateClient(client)
+  updateClients()
+}
 
 watch(() => ClientsStore.clients, updateClients, { deep: true })
 
@@ -159,7 +185,7 @@ onMounted(updateClients)
   display: flex;
   flex-direction: column;
   gap: 28px;
-  max-height: 450px;
+  max-height: 600px;
   overflow-y: auto;
 }
 

@@ -99,7 +99,7 @@ const TarifList = ref([])
 const StavkaList = ref([])
 const TeacherList = ref([])
 
-const props = defineProps({
+defineProps({
   isOpenModalCreateLesson: {
     type: Boolean,
   },

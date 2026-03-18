@@ -1,5 +1,5 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalCreateClient" @close="$emit('closeModalCreateClient')" >
+  <ModalLayout :IsOpen="IsOpenModalCreateClient" @close="$emit('closeModalCreateClient')">
     <template #header>
       <span>Новый клиент</span>
     </template>
@@ -54,11 +54,11 @@ import { ref } from 'vue'
 import ModalLayout from './ModalLayout.vue'
 import { useClientsStore } from '@/stores/clients'
 
-const ClientsStore= useClientsStore()
+const ClientsStore = useClientsStore()
 
 const emit = defineEmits(['closeModalCreateClient'])
 
-const props = defineProps({
+defineProps({
   IsOpenModalCreateClient: {
     type: Boolean,
   },
@@ -77,12 +77,12 @@ const newClientInputs = ref({
   grade: '',
   balance: '',
 })
-const createClient= () => {
+const createClient = () => {
   let newClient = newClientInputs.value
+  newClient.status = 'active'
   ClientsStore.createClient(newClient)
-  emit("closeModalCreateClient")
+  emit('closeModalCreateClient')
 }
-
 </script>
 
 <style scoped>

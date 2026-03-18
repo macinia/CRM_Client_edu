@@ -1,10 +1,10 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalCreateEmployer" @close="$emit('closeModalCreateEmployer')">
+  <ModalLayout :IsOpen="isOpenModalEditEmployer" @close="$emit('closeModalEditEmployer')">
     <template #header>
-      <span>Новый сотрудник</span>
+      <span>Редактирование сотрудника</span>
     </template>
 
-    <form @submit.prevent="createEmployer()">
+    <form @submit.prevent="updateEmployer()">
       <!-- Основные поля пользователя -->
       <div v-for="field in userFields" :key="field.name" class="Input-item">
         <label :for="field.name">{{ field.label }}</label>
@@ -21,15 +21,16 @@
           :id="field.name"
           :type="field.type"
           :placeholder="field.placeholder"
-          v-model="newEmployerInputs.user[field.name]"
+          v-model="editEmployerInputs.user[field.name]"
           :required="field.required"
         />
 
         <select
           v-else-if="field.type === 'select'"
           :id="field.name"
-          v-model="newEmployerInputs.user[field.name]"
+          v-model="editEmployerInputs.user[field.name]"
           :required="field.required"
+          @change="handleRoleChange"
         >
           <option value="">{{ field.placeholder || 'Выберите роль' }}</option>
           <option v-for="option in field.options" :key="option.value" :value="option.value">
@@ -39,18 +40,23 @@
       </div>
 
       <!-- Блок предметов для преподавателя -->
-      <div v-if="newEmployerInputs.user.role === 'Преподаватель'" class="subjects-block">
-        <div v-for="(subject, index) in newEmployerInputs.subjects" :key="index" class="Input-item">
+      <div v-if="editEmployerInputs.user.role === 'Преподаватель'" class="subjects-block">
+        <div
+          v-for="(subject, index) in editEmployerInputs.subjects"
+          :key="index"
+          class="Input-item"
+        >
           <label :for="'subject-' + index">Предмет {{ index + 1 }}</label>
           <div class="subject-input-wrapper">
+            <!-- Изменено: теперь работаем с объектами предметов -->
             <input
               :id="'subject-' + index"
               type="text"
-              v-model="newEmployerInputs.subjects[index]"
+              v-model="subject.name"
               placeholder="Введите название предмета"
             />
             <button
-              v-if="index === newEmployerInputs.subjects.length - 1"
+              v-if="index === editEmployerInputs.subjects.length - 1"
               type="button"
               class="add-subject-btn"
               @click="addSubject"
@@ -59,7 +65,7 @@
               +
             </button>
             <button
-              v-if="newEmployerInputs.subjects.length > 1"
+              v-if="editEmployerInputs.subjects.length > 1"
               type="button"
               class="remove-subject-btn"
               @click="removeSubject(index)"
@@ -76,28 +82,32 @@
         <label for="notes">Примечания</label>
         <textarea
           id="notes"
-          v-model="newEmployerInputs.notes"
+          v-model="editEmployerInputs.notes"
           placeholder="Введите примечания"
           rows="3"
         />
       </div>
 
-      <button type="submit">Создать сотрудника</button>
+      <div class="form-actions">
+        <button type="submit" class="submit-btn">Сохранить изменения</button>
+      </div>
     </form>
   </ModalLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import ModalLayout from './ModalLayout.vue'
-import { useEmployersStore } from '@/stores/employers'
 
-const emit = defineEmits(['closeModalCreateEmployer'])
-const EmployersStore = useEmployersStore()
+const emit = defineEmits(['closeModalEditEmployer', 'saveEmployer'])
 
 const props = defineProps({
-  IsOpenModalCreateEmployer: {
+  isOpenModalEditEmployer: {
     type: Boolean,
+    required: true,
+  },
+  employerData: {
+    type: Object,
     required: true,
   },
 })
@@ -142,7 +152,7 @@ const userFields = computed(() => [
     name: 'timezone',
     label: 'Часовой пояс',
     type: 'text',
-    placeholder: 'Europe/Moscow',
+    placeholder: '+3',
     required: false,
   },
   {
@@ -166,15 +176,16 @@ const userFields = computed(() => [
   },
   {
     name: 'password',
-    label: 'Пароль',
+    label: 'Новый пароль (оставьте пустым, если не хотите менять)',
     type: 'password',
-    placeholder: 'Введите пароль',
-    required: true,
+    placeholder: 'Введите новый пароль',
+    required: false,
   },
 ])
 
 // Данные формы
-const newEmployerInputs = ref({
+const editEmployerInputs = ref({
+  id: null,
   user: {
     surname: '',
     name: '',
@@ -186,26 +197,73 @@ const newEmployerInputs = ref({
     hex: '#802e87',
     password: '',
   },
-  subjects: [''],
+  subjects: [],
   notes: '',
 })
 
+// Загрузка данных сотрудника при открытии модалки
+watch(
+  () => props.employerData,
+  (newData) => {
+    if (newData && Object.keys(newData).length > 0) {
+      loadEmployerData(newData)
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+// Загрузка данных сотрудника в форму
+const loadEmployerData = (data) => {
+  editEmployerInputs.value.id = data.id || null
+
+  // Заполняем данные пользователя
+  editEmployerInputs.value.user = {
+    surname: data.user?.surname || '',
+    name: data.user?.name || '',
+    patronymic: data.user?.patronymic || '',
+    email: data.user?.email || '',
+    phone: data.user?.phone || '',
+    timezone: data.user?.timezone || '',
+    role: data.user?.role || '',
+    hex: data.user?.hex || '#802e87',
+    password: '', // Пароль не загружаем для безопасности
+  }
+
+  // Заполняем предметы (теперь это массив объектов)
+  if (data.subjects && data.subjects.length > 0) {
+    // Копируем объекты предметов
+    editEmployerInputs.value.subjects = data.subjects.map((subject) => ({ ...subject }))
+  } else {
+    editEmployerInputs.value.subjects = [{ name: '', id: null }]
+  }
+
+  // Заполняем примечания
+  editEmployerInputs.value.notes = data.notes || ''
+}
+
+// Обработка смены роли
+const handleRoleChange = () => {
+  if (editEmployerInputs.value.user.role !== 'Преподаватель') {
+    editEmployerInputs.value.subjects = []
+  }
+}
+
 // Методы для работы с предметами
 const addSubject = () => {
-  newEmployerInputs.value.subjects.push('')
+  editEmployerInputs.value.subjects.push({ name: '', id: null })
 }
 
 const removeSubject = (index) => {
-  if (newEmployerInputs.value.subjects.length > 1) {
-    newEmployerInputs.value.subjects.splice(index, 1)
+  if (editEmployerInputs.value.subjects.length > 1) {
+    editEmployerInputs.value.subjects.splice(index, 1)
   }
 }
 
 // Валидация формы
 const validateForm = () => {
-  const { surname, name, email, phone, role, password } = newEmployerInputs.value.user
+  const { surname, name, email, phone, role } = editEmployerInputs.value.user
 
-  if (!surname || !name || !email || !phone || !role || !password) {
+  if (!surname || !name || !email || !phone || !role) {
     alert('Пожалуйста, заполните все обязательные поля')
     return false
   }
@@ -217,7 +275,7 @@ const validateForm = () => {
     return false
   }
 
-  // Валидация телефона (простая проверка)
+  // Валидация телефона
   const phoneRegex = /^\+?[0-9\s\-()]{10,}$/
   if (!phoneRegex.test(phone)) {
     alert('Пожалуйста, введите корректный номер телефона')
@@ -227,31 +285,48 @@ const validateForm = () => {
   return true
 }
 
-// Создание сотрудника
-const createEmployer = () => {
+// Обновление сотрудника
+const updateEmployer = async () => {
   if (!validateForm()) return
 
   // Фильтруем пустые предметы
-  const filteredSubjects = newEmployerInputs.value.subjects.filter((s) => s.trim() !== '')
+  const filteredSubjects = editEmployerInputs.value.subjects
+    .filter((s) => s.name && s.name.trim() !== '')
+    .map((s) => ({
+      ...s,
+      name: s.name.trim(),
+    }))
 
-  let newEmployer = {
-    user: { ...newEmployerInputs.value.user },
-    notes: newEmployerInputs.value.notes,
-    subjects: filteredSubjects.length ? filteredSubjects : undefined,
+  // Формируем объект для отправки
+  let updatedEmployer = {
+    id: props.employerData.id,
+    user: { ...editEmployerInputs.value.user, id: props.employerData.user.id },
+    notes: editEmployerInputs.value.notes,
   }
 
-  console.log('Новый сотрудник:', newEmployer)
+  // Добавляем предметы только если они есть
+  if (filteredSubjects.length > 0) {
+    updatedEmployer.subjects = filteredSubjects
+  }
 
-  EmployersStore.createEmployer(newEmployer)
-  emit('closeModalCreateEmployer')
+  // Удаляем пароль, если он пустой (не меняем)
+  if (!updatedEmployer.user.password) {
+    delete updatedEmployer.user.password
+  }
 
-  // Сброс формы
-  resetForm()
+  try {
+    emit('saveEmployer', updatedEmployer)
+    emit('closeModalEditEmployer')
+  } catch (error) {
+    console.error('Ошибка при обновлении сотрудника:', error)
+    alert('Произошла ошибка при обновлении данных сотрудника')
+  }
 }
 
-// Сброс формы
+// Сброс формы (можно использовать при закрытии)
 const resetForm = () => {
-  newEmployerInputs.value = {
+  editEmployerInputs.value = {
+    id: null,
     user: {
       surname: '',
       name: '',
@@ -263,7 +338,7 @@ const resetForm = () => {
       hex: '#802e87',
       password: '',
     },
-    subjects: [''],
+    subjects: [],
     notes: '',
   }
 }
@@ -358,28 +433,46 @@ const resetForm = () => {
   border: 2px solid #802e87;
 }
 
-button[type='submit'] {
-  width: 100%;
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.submit-btn,
+.cancel-btn {
+  flex: 1;
   padding: 14px;
   font-size: 16px;
   font-weight: bold;
-  color: white;
-  background-color: #802e87;
   border: none;
   border-radius: 17px;
   cursor: pointer;
-  transition:
-    background-color 0.3s,
-    transform 0.2s;
-  margin-top: 10px;
+  transition: all 0.3s;
 }
 
-button[type='submit']:hover {
+.submit-btn {
+  background-color: #802e87;
+  color: black;
+}
+
+.submit-btn:hover {
   background-color: #5d1e5e;
   transform: translateY(-2px);
 }
 
-button[type='submit']:active {
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #da190b;
+  transform: translateY(-2px);
+}
+
+.submit-btn:active,
+.cancel-btn:active {
   transform: translateY(0);
 }
 

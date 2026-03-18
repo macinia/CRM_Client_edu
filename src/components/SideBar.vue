@@ -39,7 +39,7 @@ const navItems = computed(() => {
       label: 'Отчеты',
       logoUrl: 'report.svg',
       url: '/report',
-      isVisible: authStore.user.role == 'admin' && authStore.user.role == 'manager',
+      isVisible: authStore.user.role == 'admin' || authStore.user.role == 'manager',
     },
     {
       label: 'Финансы',

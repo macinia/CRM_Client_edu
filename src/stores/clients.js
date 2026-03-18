@@ -15,7 +15,7 @@ export const useClientsStore = defineStore('ClientsStore', {
         birthDate: '25.03.2004',
         grade: '10',
         balance: '3500',
-        status: 'ACTIVE',
+        status: 'active',
       },
       {
         id: 1,
@@ -24,12 +24,12 @@ export const useClientsStore = defineStore('ClientsStore', {
         patronymic: 'Дмитриевич',
         email: 'k-rogach04@gmail.com',
         phone: '+79033256790',
-        timezone: "+3",
+        timezone: '+3',
         hex: '#E1DEF7',
         birthDate: '25.03.2004',
         grade: '11',
         balance: '8000',
-        status: 'ACTIVE',
+        status: 'active',
       },
       {
         id: 3,
@@ -43,7 +43,7 @@ export const useClientsStore = defineStore('ClientsStore', {
         birthDate: '25.03.2004',
         grade: '9',
         balance: '3500',
-        status: 'ACTIVE',
+        status: 'active',
       },
     ],
   }),
@@ -53,20 +53,19 @@ export const useClientsStore = defineStore('ClientsStore', {
         return this.clients
       }
     },
-    getFioClients()
-    {
-      return async ()=>{
-      let  array= [];
-      this.clients.forEach((client)=> {
-        let fio= `${client.surname} ${client.name} ${client.patronymic}`
-        array.push({
-          id:client.id,
-         fio:fio
+    getFioClients() {
+      return async () => {
+        let array = []
+        this.clients.forEach((client) => {
+          let fio = `${client.surname} ${client.name} ${client.patronymic}`
+          array.push({
+            id: client.id,
+            fio: fio,
+          })
         })
-      })
-      return array
+        return array
       }
-    }
+    },
   },
   actions: {
     async createClient(client) {
@@ -74,6 +73,11 @@ export const useClientsStore = defineStore('ClientsStore', {
       currentClient.id = this.clients.length + 1
       this.clients.push(client)
     },
+    async updateClient(client) {
+      let index = this.clients.findIndex((element) => element.id == client.id)
+      if (index !== -1) {
+        this.clients[index] = { ...this.clients[index], ...client }
+      }
+    },
   },
-
 })
