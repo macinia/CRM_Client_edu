@@ -4,8 +4,9 @@ export const useEmployersStore = defineStore('EmployersStore', {
   state: () => ({
     employers: [
       {
+        id: 4,
         user: {
-          id: 0,
+          id: 4,
           surname: 'Космач',
           name: 'Мария',
           patronymic: 'Романовна',
@@ -125,22 +126,25 @@ export const useEmployersStore = defineStore('EmployersStore', {
       }
     },
     getTeachers() {
-      return async() =>
-      {
-        return this.employers.filter( (employer) =>{
-         return  employer.user.role === 'Преподаватель'
-        } )
+      return async () => {
+        return this.employers.filter((employer) => {
+          return employer.user.role === 'Преподаватель'
+        })
       }
-    }
+    },
   },
   actions: {
     async createEmployer(employer) {
-      let currentEmployer=employer
-      currentEmployer.id=this.employers.length+1
-      currentEmployer.user.id=this.employers.length+1
+      let currentEmployer = employer
+      currentEmployer.id = this.employers.length + 1
+      currentEmployer.user.id = this.employers.length + 1
       this.employers.push(employer)
-      console.log(this.employers);
-
+    },
+    async updateEmployer(employer) {
+      let index = this.employers.findIndex((element) => element.user.id == employer.user.id)
+      if (index !== -1) {
+        this.employers[index] = { ...this.employers[index], ...employer }
+      }
     },
   },
 })
