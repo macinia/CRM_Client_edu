@@ -15,14 +15,8 @@
         <button
           v-for="role in sections"
           :key="role.label"
-          @click="
-            () => {
-              sections.forEach((section) => (section.isChoosen = false))
-              selectRole(role.array)
-              role.isChoosen = true
-            }
-          "
-          :class="['nav-item', role.isChoosen ? 'selected' : ' ']"
+          @click="selectRole(role.role)"
+          :class="['nav-item', role.isChoosen ? 'selected' : '']"
         >
           {{ role.label }} ({{ role.array.length }})
         </button>
@@ -69,7 +63,7 @@
 
 <script setup>
 import PageLayout from '@/components/PageLayout.vue'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useEmployersStore } from '@/stores/employers'
 import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -79,14 +73,21 @@ import { storeToRefs } from 'pinia'
 const isOpenModalCreateEmployer = ref(false)
 const isOpenModalEditEmployer = ref(false)
 const editEmployer = ref({})
-const selectedRole = ref('SUPERUSER') // Для отслеживания выбранной роли
+const selectedRole = ref('SUPERUSER') // По умолчанию показываем администраторов
 
 const authStore = useAuthStore()
 const EmployersStore = useEmployersStore()
 
 const { employers } = storeToRefs(EmployersStore)
 
-// Computed свойства для分组 сотрудников по ролям
+// Маппинг ролей для удобства
+const roleMapping = {
+  SUPERUSER: 'Администратор',
+  MANAGER: 'Менеджер',
+  TEACHER: 'Преподаватель',
+}
+
+// Computed свойства для группировки сотрудников по ролям
 const groupedUsers = computed(() => {
   const groups = {
     superusers: [],
@@ -147,7 +148,7 @@ const selectedUsers = computed(() => {
   }
 })
 
-// Функция выбора роли
+// Функция выбора роли - теперь принимает строку с ролью
 const selectRole = (role) => {
   selectedRole.value = role
 }
@@ -201,6 +202,13 @@ const openModalEditEmployer = (employer) => {
 .nav-item {
   padding: 8px;
   font-size: 24px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: all 0.3s ease;
+}
+.nav-item:hover {
+  opacity: 0.8;
 }
 .selected {
   font-weight: 600;
