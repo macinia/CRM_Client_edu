@@ -2,56 +2,62 @@
   <PageLayout>
     <div class="company-top">
       <h1>Сотрудники</h1>
+
       <button
-        @click="openModalCreateEmployer()"
-        v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
+        v-if="authStore.user?.role === 'admin' || authStore.user?.role === 'manager'"
+        @click="openModalCreateEmployer"
       >
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Сотрудник
       </button>
     </div>
+
     <div class="copmany-employes">
       <div class="copmany-employes-nav">
         <button
-          v-for="role in sections"
-          :key="role.label"
-          @click="selectRole(role.role)"
-          :class="['nav-item', role.isChoosen ? 'selected' : '']"
+          v-for="section in sections"
+          :key="section.role"
+          @click="selectRole(section.role)"
+          :class="['nav-item', selectedRole === section.role ? 'selected' : '']"
         >
-          {{ role.label }} ({{ role.array.length }})
+          {{ section.label }} ({{ section.items.length }})
         </button>
       </div>
+
       <div class="user-list-container">
         <div
           v-for="user in selectedUsers"
-          :key="user.user.id"
-          :style="{ backgroundColor: user.user.hex }"
+          :key="user.id"
+          :style="{ backgroundColor: user.color }"
           class="user-card"
         >
           <div class="card-info">
             <div class="info-top">
-              <p class="fio">
-                {{ user.user.surname }} {{ user.user.name }} {{ user.user.patronymic }}
-              </p>
-              (UTC{{ user.user.timezone }})
+              <p class="fio">{{ user.surname }} {{ user.name }} {{ user.patronymic }}</p>
+              <span>(UTC{{ user.timezone }})</span>
             </div>
-            <div class="info-buttom">{{ user.user.phone }} {{ user.user.email }}</div>
+
+            <div class="info-buttom">{{ user.phone }} {{ user.email }}</div>
           </div>
+
           <div class="card-role">
-            {{ user.user.role }}
+            {{ getRoleLabel(user.role) }}
           </div>
+
           <div class="card-action">
-            <button @click="openModalEditEmployer(user)" v-if="authStore.user.role == 'admin'">
+            <button v-if="authStore.user?.role === 'admin'" @click="openModalEditEmployer(user)">
               <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
             </button>
           </div>
         </div>
       </div>
     </div>
+
     <ModalCreateEmployer
       :IsOpenModalCreateEmployer="isOpenModalCreateEmployer"
       @closeModalCreateEmployer="closeModalCreateEmployer"
     />
+
     <ModalEditEmployer
       :isOpenModalEditEmployer="isOpenModalEditEmployer"
       :employerData="editEmployer"
@@ -62,121 +68,82 @@
 </template>
 
 <script setup>
-import PageLayout from '@/components/PageLayout.vue'
 import { ref, computed } from 'vue'
-import { useEmployersStore } from '@/stores/employers'
-import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
-import { useAuthStore } from '@/stores/auth'
-import ModalEditEmployer from '@/components/ModalEditEmployer.vue'
 import { storeToRefs } from 'pinia'
+import PageLayout from '@/components/PageLayout.vue'
+import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
+import ModalEditEmployer from '@/components/ModalEditEmployer.vue'
+import { useEmployersStore } from '@/stores/employers'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const employersStore = useEmployersStore()
+const { employers } = storeToRefs(employersStore)
 
 const isOpenModalCreateEmployer = ref(false)
 const isOpenModalEditEmployer = ref(false)
-const editEmployer = ref({})
-const selectedRole = ref('SUPERUSER') // По умолчанию показываем администраторов
+const editEmployer = ref(null)
+const selectedRole = ref('admin')
 
-const authStore = useAuthStore()
-const EmployersStore = useEmployersStore()
-
-const { employers } = storeToRefs(EmployersStore)
-
-// Маппинг ролей для удобства
-const roleMapping = {
-  SUPERUSER: 'Администратор',
-  MANAGER: 'Менеджер',
-  TEACHER: 'Преподаватель',
-}
-
-// Computed свойства для группировки сотрудников по ролям
-const groupedUsers = computed(() => {
-  const groups = {
-    superusers: [],
-    manager: [],
-    teacher: [],
-  }
-
-  if (employers.value && employers.value.length > 0) {
-    employers.value.forEach((item) => {
-      const user = item.user
-
-      if (user.role === 'Администратор') {
-        groups.superusers.push(item)
-      } else if (user.role === 'Менеджер') {
-        groups.manager.push(item)
-      } else if (user.role === 'Преподаватель') {
-        groups.teacher.push(item)
-      }
-    })
-  }
-
-  return groups
-})
-
-// Секции навигации
 const sections = computed(() => [
   {
-    label: 'Администратор',
-    array: groupedUsers.value.superusers,
-    role: 'SUPERUSER',
-    isChoosen: selectedRole.value === 'SUPERUSER',
+    role: 'admin',
+    label: 'Администраторы',
+    items: employers.value.filter((item) => item.role === 'admin'),
   },
   {
-    label: 'Менеджер',
-    array: groupedUsers.value.manager,
-    role: 'MANAGER',
-    isChoosen: selectedRole.value === 'MANAGER',
+    role: 'manager',
+    label: 'Менеджеры',
+    items: employers.value.filter((item) => item.role === 'manager'),
   },
   {
-    label: 'Преподаватель',
-    array: groupedUsers.value.teacher,
-    role: 'TEACHER',
-    isChoosen: selectedRole.value === 'TEACHER',
+    role: 'teacher',
+    label: 'Преподаватели',
+    items: employers.value.filter((item) => item.role === 'teacher'),
   },
 ])
 
-// Выбранные пользователи на основе текущей роли
 const selectedUsers = computed(() => {
-  switch (selectedRole.value) {
-    case 'SUPERUSER':
-      return groupedUsers.value.superusers
-    case 'MANAGER':
-      return groupedUsers.value.manager
-    case 'TEACHER':
-      return groupedUsers.value.teacher
-    default:
-      return groupedUsers.value.superusers
-  }
+  const currentSection = sections.value.find((section) => section.role === selectedRole.value)
+  return currentSection ? currentSection.items : []
 })
 
-// Функция выбора роли - теперь принимает строку с ролью
 const selectRole = (role) => {
   selectedRole.value = role
 }
 
-const saveEmployer = (updatedEmployer) => {
-  EmployersStore.updateEmployer(updatedEmployer)
-}
-
-const closeModalCreateEmployer = () => {
-  isOpenModalCreateEmployer.value = false
+const getRoleLabel = (role) => {
+  if (role === 'admin') return 'Администратор'
+  if (role === 'manager') return 'Менеджер'
+  if (role === 'teacher') return 'Преподаватель'
+  return role
 }
 
 const openModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = true
 }
 
-const closeModalEditEmployer = () => {
-  isOpenModalEditEmployer.value = false
+const closeModalCreateEmployer = () => {
+  isOpenModalCreateEmployer.value = false
 }
 
 const openModalEditEmployer = (employer) => {
+  editEmployer.value = { ...employer }
   isOpenModalEditEmployer.value = true
-  editEmployer.value = employer
+}
+
+const closeModalEditEmployer = () => {
+  isOpenModalEditEmployer.value = false
+  editEmployer.value = null
+}
+
+const saveEmployer = (updatedEmployer) => {
+  employersStore.updateEmployer(updatedEmployer)
+  closeModalEditEmployer()
 }
 </script>
 
 <style scoped>
-/* Стили остаются без изменений */
 .company-top {
   display: flex;
   justify-content: space-between;
@@ -250,7 +217,6 @@ const openModalEditEmployer = (employer) => {
   flex-direction: column;
   justify-content: space-between;
 }
-
 .info-top {
   font-weight: 600;
   font-size: 26px;
@@ -281,7 +247,6 @@ const openModalEditEmployer = (employer) => {
   justify-content: center;
   margin-right: 20px;
 }
-
 .user-role {
   display: flex;
   justify-content: flex-end;

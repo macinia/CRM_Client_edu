@@ -1,35 +1,39 @@
 import { defineStore } from 'pinia'
 
-export const useClientsStore = defineStore('ClientsStore', {
+export const useClientsStore = defineStore('clients', {
   state: () => ({
     clients: [
       {
-        id: 0,
+        id: 1,
         surname: 'Маматова',
         name: 'Татьяна',
         patronymic: 'Даниловна',
         email: 'mamatovatd@gmail.com',
         phone: '+79033256790',
         timezone: '+5',
-        hex: '#E1DEF7',
-        birthDate: '25.03.2004',
-        grade: '10',
-        balance: '3500',
+        color: '#E1DEF7',
+        birthDate: '2004-03-25',
+        grade: 10,
+        balance: 3500,
         status: 'active',
+        createdAt: '2025-02-22T12:32:17.867Z',
+        updatedAt: '2025-02-22T12:32:17.867Z',
       },
       {
-        id: 1,
+        id: 2,
         surname: 'Рогачев',
         name: 'Кирилл',
         patronymic: 'Дмитриевич',
         email: 'k-rogach04@gmail.com',
         phone: '+79033256790',
         timezone: '+3',
-        hex: '#E1DEF7',
-        birthDate: '25.03.2004',
-        grade: '11',
-        balance: '8000',
+        color: '#E1DEF7',
+        birthDate: '2004-03-25',
+        grade: 11,
+        balance: 8000,
         status: 'active',
+        createdAt: '2025-02-22T12:32:17.867Z',
+        updatedAt: '2025-02-22T12:32:17.867Z',
       },
       {
         id: 3,
@@ -39,45 +43,68 @@ export const useClientsStore = defineStore('ClientsStore', {
         email: 'trosenko25@mail.ru',
         phone: '+79033256790',
         timezone: '+4',
-        hex: '#E1DEF7',
-        birthDate: '25.03.2004',
-        grade: '9',
-        balance: '3500',
+        color: '#E1DEF7',
+        birthDate: '2004-03-25',
+        grade: 9,
+        balance: 3500,
         status: 'active',
+        createdAt: '2025-02-22T12:32:17.867Z',
+        updatedAt: '2025-02-22T12:32:17.867Z',
       },
     ],
   }),
+
   getters: {
-    getClients() {
-      return async () => {
-        return this.clients
-      }
-    },
-    getFioClients() {
-      return async () => {
-        let array = []
-        this.clients.forEach((client) => {
-          let fio = `${client.surname} ${client.name} ${client.patronymic}`
-          array.push({
-            id: client.id,
-            fio: fio,
-          })
-        })
-        return array
-      }
-    },
+    clientOptions: (state) =>
+      state.clients.map((client) => ({
+        id: client.id,
+        label: `${client.surname} ${client.name} ${client.patronymic}`.trim(),
+      })),
+
+    activeClients: (state) => state.clients.filter((client) => client.status === 'active'),
+
+    inactiveClients: (state) => state.clients.filter((client) => client.status === 'inactive'),
   },
+
   actions: {
-    async createClient(client) {
-      let currentClient = client
-      currentClient.id = this.clients.length + 1
-      this.clients.push(client)
+    getNextId() {
+      if (!this.clients.length) return 1
+      return Math.max(...this.clients.map((client) => client.id)) + 1
     },
-    async updateClient(client) {
-      let index = this.clients.findIndex((element) => element.id == client.id)
-      if (index !== -1) {
-        this.clients[index] = { ...this.clients[index], ...client }
+
+    createClient(client) {
+      const now = new Date().toISOString()
+
+      const newClient = {
+        ...client,
+        id: this.getNextId(),
+        balance: Number(client.balance) || 0,
+        grade: Number(client.grade) || null,
+        status: client.status || 'active',
+        color: client.color || '#E1DEF7',
+        createdAt: now,
+        updatedAt: now,
       }
+
+      this.clients.push(newClient)
+    },
+
+    updateClient(updatedClient) {
+      const index = this.clients.findIndex((client) => client.id === updatedClient.id)
+
+      if (index === -1) return
+
+      this.clients[index] = {
+        ...this.clients[index],
+        ...updatedClient,
+        balance: Number(updatedClient.balance ?? this.clients[index].balance) || 0,
+        grade: Number(updatedClient.grade ?? this.clients[index].grade) || null,
+        updatedAt: new Date().toISOString(),
+      }
+    },
+
+    deleteClient(id) {
+      this.clients = this.clients.filter((client) => client.id !== id)
     },
   },
 })

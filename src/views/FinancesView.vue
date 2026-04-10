@@ -2,119 +2,246 @@
   <PageLayout>
     <div class="finances-top">
       <h1>Финансы</h1>
-      <button @click="openModalCreateEmployer">
+
+      <button v-if="showAddButton" @click="openCreateModal">
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
-        {{ titleAdd }}
+        {{ addButtonTitle }}
       </button>
     </div>
 
-    <div class="finances-employes">
-      <div class="finances-employes-nav">
-        <button
-          v-for="section in sections"
-          :key="section.id"
-          @click="selectSection(section.id)"
-          :class="['nav-item', { selected: activeSection === section.id }]"
+    <div class="finances-nav">
+      <button
+        v-for="section in sections"
+        :key="section.id"
+        @click="selectSection(section.id)"
+        :class="['nav-item', { selected: activeSection === section.id }]"
+      >
+        {{ section.title }} ({{ section.count }})
+      </button>
+    </div>
+
+    <div class="finances-content">
+      <div v-if="activeSection === 'tariffs'" class="card-list">
+        <div
+          v-for="tariff in tariffs"
+          :key="tariff.id"
+          class="finance-card"
+          :style="{ backgroundColor: tariff.color }"
         >
-          {{ section.title }} ({{ section.count }})
-        </button>
+          <div class="card-main">
+            <div class="card-title">{{ tariff.title }}</div>
+            <div class="card-subtitle">
+              {{ getFormatLabel(tariff.format) }}
+            </div>
+          </div>
+
+          <div class="card-meta">
+            <div>Длительность: {{ tariff.lessonDurationMinutes }} мин</div>
+            <div>Количество занятий: {{ tariff.lessonsCount }}</div>
+            <div>Стоимость: {{ tariff.price }} ₽</div>
+          </div>
+        </div>
       </div>
 
-      <div class="user-list-container">
+      <div v-else-if="activeSection === 'rates'" class="card-list">
         <div
-          v-for="item in selectedArray"
-          :key="item.id"
-          :style="{ backgroundColor: item.hex }"
-          class="user-card"
+          v-for="rate in teacherRateCards"
+          :key="rate.id"
+          class="finance-card"
+          :style="{ backgroundColor: rate.color }"
         >
-          <div class="card-info">
-            <div class="info-top">
-              <p class="fio">{{ item.surname }} {{ item.name }} {{ item.patronymic }}</p>
-              (UTC{{ item.timezone }})
+          <div class="card-main">
+            <div class="card-title">{{ rate.teacherName }}</div>
+            <div class="card-subtitle">{{ rate.subject }}</div>
+          </div>
+
+          <div class="card-meta">
+            <div>Длительность: {{ rate.lessonDurationMinutes }} мин</div>
+            <div>Уровень: {{ getTeacherLevelLabel(rate.teacherLevel) }}</div>
+            <div>Ставка: {{ rate.rate }} ₽</div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="card-list">
+        <div
+          v-for="salary in salaryCards"
+          :key="salary.id"
+          class="finance-card"
+          :style="{ backgroundColor: salary.color }"
+        >
+          <div class="card-main">
+            <div class="card-title">{{ salary.teacherName }}</div>
+            <div class="card-subtitle">
+              {{ salary.periodLabel }}
             </div>
-            <div class="info-bottom">{{ item.phone }} {{ item.email }}</div>
           </div>
-          <div class="card-name">
-            {{ item.name }}
-          </div>
-          <div class="card-action">
-            <button>
-              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-            </button>
+
+          <div class="card-meta">
+            <div>Проведено занятий: {{ salary.lessonsCount }}</div>
+            <div>Оплачиваемых минут: {{ salary.totalMinutes }}</div>
+            <div>Сумма: {{ salary.totalAmount }} ₽</div>
           </div>
         </div>
       </div>
     </div>
-
-    <ModalCreateEmployer
-      :is-open="isOpenModalCreateEmployer"
-      @close="handleModalClose"
-      @submit="refreshData"
-    />
   </PageLayout>
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import PageLayout from '@/components/PageLayout.vue'
-import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
-import { useTarifStore } from '@/stores/tarif'
-import { useStavkaStore } from '@/stores/stavka'
-// import { useSalaryStore } from '@/stores/salary'
 
-const titleAdd = ref('Добавить сотрудника')
+import { useAuthStore } from '@/stores/auth'
+import { useFinancesStore } from '@/stores/finances'
+import { useEmployersStore } from '@/stores/employers'
+import { useLessonsStore } from '@/stores/lessons'
 
-const tarifStore = useTarifStore()
-const stavkaStore = useStavkaStore()
-// const salaryStore = useSalaryStore()
+const authStore = useAuthStore()
+const financesStore = useFinancesStore()
+const employersStore = useEmployersStore()
+const lessonsStore = useLessonsStore()
 
-const tarifs = ref([])
-const stavkas = ref([])
-const salaries = ref([])
+const { tariffs, teacherRates, salaryPeriods } = storeToRefs(financesStore)
+const { employers } = storeToRefs(employersStore)
+const { lessons } = storeToRefs(lessonsStore)
 
-const activeSection = ref('tarif')
-const isOpenModalCreateEmployer = ref(false)
+const activeSection = ref('tariffs')
 
-const sections = computed(() => [
-  { id: 'tarif', title: 'Тарифы', count: tarifs.value.length },
-  { id: 'stavka', title: 'Ставки', count: stavkas.value.length },
-  { id: 'salary', title: 'Зарплаты', count: salaries.value.length },
-])
+const isCreateTariffModalOpen = ref(false)
+const isCreateTeacherRateModalOpen = ref(false)
 
-const selectedArray = computed(() => {
-  switch (activeSection.value) {
-    case 'tarif':
-      return tarifs.value
-    case 'stavka':
-      return stavkas.value
-    case 'salary':
-      return salaries.value
-    default:
-      return []
-  }
+const canManageFinances = computed(() => {
+  return authStore.user?.role === 'admin' || authStore.user?.role === 'manager'
 })
 
-const selectSection = (sectionId) => {
+const showAddButton = computed(() => {
+  return canManageFinances.value && activeSection.value !== 'salaries'
+})
+
+const addButtonTitle = computed(() => {
+  if (activeSection.value === 'tariffs') return 'Тариф'
+  if (activeSection.value === 'rates') return 'Ставку'
+  return ''
+})
+
+const sections = computed(() => [
+  { id: 'tariffs', title: 'Тарифы', count: tariffs.value.length },
+  { id: 'rates', title: 'Ставки', count: teacherRateCards.value.length },
+  { id: 'salaries', title: 'Зарплаты', count: salaryCards.value.length },
+])
+
+const teachersMap = computed(() => {
+  return employers.value.reduce((acc, employer) => {
+    acc[employer.id] = employer
+    return acc
+  }, {})
+})
+
+const teacherRateCards = computed(() => {
+  return teacherRates.value.map((rate) => {
+    const teacher = teachersMap.value[rate.teacherId]
+
+    return {
+      ...rate,
+      teacherName: teacher ? getPersonFullName(teacher) : 'Неизвестный преподаватель',
+    }
+  })
+})
+
+const salaryCards = computed(() => {
+  return salaryPeriods.value.map((period) => {
+    const teacher = teachersMap.value[period.teacherId]
+    const teacherName = teacher ? getPersonFullName(teacher) : 'Неизвестный преподаватель'
+
+    const lessonsInPeriod = lessons.value.filter((lesson) => {
+      if (lesson.teacherId !== period.teacherId) return false
+
+      const lessonStart = new Date(lesson.startAt)
+      const periodStart = new Date(`${period.periodStart}T00:00:00`)
+      const periodEnd = new Date(`${period.periodEnd}T23:59:59`)
+
+      return lessonStart >= periodStart && lessonStart <= periodEnd
+    })
+
+    const totalMinutes = lessonsInPeriod.reduce((sum, lesson) => {
+      return sum + getLessonDurationMinutes(lesson)
+    }, 0)
+
+    const totalAmount = lessonsInPeriod.reduce((sum, lesson) => {
+      const lessonDurationMinutes = getLessonDurationMinutes(lesson)
+
+      const matchedRate = teacherRates.value.find((rate) => {
+        return (
+          rate.teacherId === lesson.teacherId &&
+          rate.subject === lesson.subject &&
+          rate.lessonDurationMinutes === lessonDurationMinutes
+        )
+      })
+
+      return sum + (matchedRate ? matchedRate.rate : 0)
+    }, 0)
+
+    return {
+      id: period.id,
+      teacherId: period.teacherId,
+      teacherName,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+      periodLabel: `${formatDate(period.periodStart)} — ${formatDate(period.periodEnd)}`,
+      lessonsCount: lessonsInPeriod.length,
+      totalMinutes,
+      totalAmount,
+      color: period.color,
+    }
+  })
+})
+
+function selectSection(sectionId) {
   activeSection.value = sectionId
 }
 
-const openModalCreateEmployer = () => {
-  isOpenModalCreateEmployer.value = true
+function openCreateModal() {
+  if (activeSection.value === 'tariffs') {
+    isCreateTariffModalOpen.value = true
+  }
+
+  if (activeSection.value === 'rates') {
+    isCreateTeacherRateModalOpen.value = true
+  }
 }
 
-const handleModalClose = () => {
-  isOpenModalCreateEmployer.value = false
+function getPersonFullName(person) {
+  return [person.surname, person.name, person.patronymic].filter(Boolean).join(' ')
 }
 
-const refreshData = async () => {
-  tarifs.value = await tarifStore.getTarifs()
-  stavkas.value = await stavkaStore.getStavkas()
-  salaries.value = []
+function getLessonDurationMinutes(lesson) {
+  const start = new Date(lesson.startAt)
+  const end = new Date(lesson.endAt)
+
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60))
 }
 
-onMounted(async () => {
-  await refreshData()
-})
+function getFormatLabel(format) {
+  if (format === 'individual') return 'Индивидуальный'
+  if (format === 'group') return 'Групповой'
+  return format
+}
+
+function getTeacherLevelLabel(level) {
+  if (level === 'junior') return 'Новичок'
+  if (level === 'middle') return 'Опытный'
+  if (level === 'senior') return 'Старший'
+  return level
+}
+
+function formatDate(value) {
+  const date = new Date(`${value}T00:00:00`)
+
+  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`
+}
 </script>
 
 <style scoped>
@@ -142,7 +269,12 @@ onMounted(async () => {
   background-color: #9c869c;
 }
 
-.finances-employes-nav {
+.plus-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.finances-nav {
   display: flex;
   gap: 24px;
   border-bottom: 1px solid #6e6565;
@@ -164,7 +296,11 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.user-list-container {
+.finances-content {
+  margin-top: 20px;
+}
+
+.card-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -173,53 +309,36 @@ onMounted(async () => {
   padding-right: 8px;
 }
 
-.user-card {
+.finance-card {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 24px;
+  padding: 20px 24px;
+  border-radius: 20px;
 }
 
-.card-info {
+.card-main {
   flex: 1;
   min-width: 0;
 }
 
-.info-top {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+.card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
-.fio {
+.card-subtitle {
+  font-size: 0.95rem;
+  color: #5f5560;
+}
+
+.card-meta {
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.95rem;
   font-weight: 600;
-  font-size: 1.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.info-bottom {
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.edit-icon {
-  width: 24px;
-  height: 24px;
-  transition: opacity 0.2s;
-}
-
-.edit-icon:hover {
-  opacity: 0.7;
-}
-
-.plus-icon {
-  width: 20px;
-  height: 20px;
 }
 </style>

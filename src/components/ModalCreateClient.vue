@@ -3,48 +3,31 @@
     <template #header>
       <span>Новый клиент</span>
     </template>
-    <form @submit.prevent="createClient()">
-      <div class="Input-item">
-        <label> Фамилия </label>
-        <input type="text" v-model="newClientInputs.surname" />
+
+    <form class="client-form" @submit.prevent="createClient">
+      <div class="Input-item" v-for="field in fields" :key="field.name">
+        <label :for="field.name">{{ field.label }}</label>
+
+        <input
+          v-if="field.type !== 'select'"
+          :id="field.name"
+          v-model="form[field.name]"
+          :type="field.type"
+          :placeholder="field.placeholder"
+          :required="field.required"
+        />
+
+        <select v-else :id="field.name" v-model="form[field.name]" :required="field.required">
+          <option value="">{{ field.placeholder }}</option>
+          <option v-for="option in field.options" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
       </div>
-      <div class="Input-item">
-        <label> Имя </label>
-        <input type="text" v-model="newClientInputs.name" />
+
+      <div class="form-actions">
+        <button type="submit" class="submit-btn">Создать клиента</button>
       </div>
-      <div class="Input-item">
-        <label> Отчество </label>
-        <input type="text" v-model="newClientInputs.patronymic" />
-      </div>
-      <div class="Input-item">
-        <label> Номер телефона </label>
-        <input type="tel" v-model="newClientInputs.phone" />
-      </div>
-      <div class="Input-item">
-        <label> Почта </label>
-        <input type="email" v-model="newClientInputs.email" />
-      </div>
-      <div class="Input-item">
-        <label> Часовой пояс </label>
-        <input type="text" v-model="newClientInputs.timezone" />
-      </div>
-      <div class="Input-item">
-        <label> Цвет </label>
-        <input type="color" v-model="newClientInputs.hex" />
-      </div>
-      <div class="Input-item">
-        <label> Дата рождения </label>
-        <input type="date" v-model="newClientInputs.birthDate" />
-      </div>
-      <div class="Input-item">
-        <label> Класс </label>
-        <input type="number" v-model="newClientInputs.grade" />
-      </div>
-      <div class="Input-item">
-        <label> Баланс </label>
-        <input type="number" v-model="newClientInputs.balance" />
-      </div>
-      <button type="submit">Создать</button>
     </form>
   </ModalLayout>
 </template>
@@ -54,80 +37,217 @@ import { ref } from 'vue'
 import ModalLayout from './ModalLayout.vue'
 import { useClientsStore } from '@/stores/clients'
 
-const ClientsStore = useClientsStore()
-
-const emit = defineEmits(['closeModalCreateClient'])
-
 defineProps({
   IsOpenModalCreateClient: {
     type: Boolean,
+    required: true,
   },
 })
 
-const newClientInputs = ref({
-  id: 0,
+const emit = defineEmits(['closeModalCreateClient'])
+const clientsStore = useClientsStore()
+
+const fields = [
+  {
+    name: 'surname',
+    label: 'Фамилия',
+    type: 'text',
+    placeholder: 'Введите фамилию',
+    required: true,
+  },
+  {
+    name: 'name',
+    label: 'Имя',
+    type: 'text',
+    placeholder: 'Введите имя',
+    required: true,
+  },
+  {
+    name: 'patronymic',
+    label: 'Отчество',
+    type: 'text',
+    placeholder: 'Введите отчество',
+    required: false,
+  },
+  {
+    name: 'phone',
+    label: 'Телефон',
+    type: 'tel',
+    placeholder: '+7 (999) 999-99-99',
+    required: true,
+  },
+  {
+    name: 'email',
+    label: 'Электронная почта',
+    type: 'email',
+    placeholder: 'example@mail.com',
+    required: true,
+  },
+  {
+    name: 'timezone',
+    label: 'Часовой пояс',
+    type: 'text',
+    placeholder: '+3',
+    required: false,
+  },
+  {
+    name: 'color',
+    label: 'Цвет карточки',
+    type: 'color',
+    placeholder: '#E1DEF7',
+    required: false,
+  },
+  {
+    name: 'birthDate',
+    label: 'Дата рождения',
+    type: 'date',
+    placeholder: '',
+    required: false,
+  },
+  {
+    name: 'grade',
+    label: 'Класс',
+    type: 'number',
+    placeholder: 'Введите класс',
+    required: false,
+  },
+  {
+    name: 'balance',
+    label: 'Баланс',
+    type: 'number',
+    placeholder: 'Введите баланс',
+    required: false,
+  },
+  {
+    name: 'status',
+    label: 'Статус',
+    type: 'select',
+    placeholder: 'Выберите статус',
+    required: true,
+    options: [
+      { value: 'active', label: 'Занимается' },
+      { value: 'inactive', label: 'Не занимается' },
+    ],
+  },
+]
+
+const createInitialForm = () => ({
   surname: '',
   name: '',
   patronymic: '',
   email: '',
   phone: '',
-  timezone: '',
-  hex: '',
+  timezone: '+3',
+  color: '#E1DEF7',
   birthDate: '',
   grade: '',
   balance: '',
+  status: 'active',
+  organizationId: 0,
 })
-const createClient = () => {
-  let newClient = newClientInputs.value
-  newClient.status = 'active'
-  ClientsStore.createClient(newClient)
+
+const form = ref(createInitialForm())
+
+function validateForm() {
+  if (
+    !form.value.surname ||
+    !form.value.name ||
+    !form.value.phone ||
+    !form.value.email ||
+    !form.value.status
+  ) {
+    alert('Заполните обязательные поля')
+    return false
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(form.value.email)) {
+    alert('Введите корректный email')
+    return false
+  }
+
+  const phoneRegex = /^\+?[0-9\s\-()]{10,}$/
+  if (!phoneRegex.test(form.value.phone)) {
+    alert('Введите корректный номер телефона')
+    return false
+  }
+
+  return true
+}
+
+function createClient() {
+  if (!validateForm()) return
+
+  clientsStore.createClient({
+    ...form.value,
+    grade: form.value.grade === '' ? null : Number(form.value.grade),
+    balance: form.value.balance === '' ? 0 : Number(form.value.balance),
+  })
+
+  form.value = createInitialForm()
   emit('closeModalCreateClient')
 }
 </script>
 
 <style scoped>
+.client-form {
+  display: flex;
+  flex-direction: column;
+}
+
 .Input-item {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
 .Input-item label {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: #333;
 }
 
-.Input-item input {
+.Input-item input,
+.Input-item select {
   width: 100%;
   padding: 10px 14px;
-  font-size: 16px;
+  font-size: 14px;
   border: 2px solid #802e87;
   border-radius: 17px;
   background-color: #f5f5f5;
   outline: none;
-  transition: border-color 0.3s;
 }
 
-.Input-item input:focus {
+.Input-item input:focus,
+.Input-item select:focus {
   border-color: #5d1e5e;
+  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.1);
 }
 
-button {
+.form-actions {
+  margin-top: 8px;
+}
+
+.submit-btn {
   width: 100%;
-  padding: 12px;
-  font-size: 18px;
-  font-weight: bold;
-  color: black;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
   background-color: #802e87;
   border: none;
   border-radius: 17px;
   cursor: pointer;
-  transition: background-color 0.3s;
 }
 
-button:hover {
+.submit-btn:hover {
   background-color: #5d1e5e;
+}
+
+input[type='color'] {
+  height: 50px;
+  padding: 5px;
+  cursor: pointer;
 }
 </style>

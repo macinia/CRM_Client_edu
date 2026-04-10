@@ -2,59 +2,61 @@
   <PageLayout>
     <div class="clients-top">
       <h1>Наши клиенты</h1>
-      <button
-        @click="openModalCreateClient()"
-        v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
-      >
+
+      <button v-if="canManageClients" @click="openModalCreateClient">
         <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
         Клиент
       </button>
     </div>
+
     <div class="search-container">
       <div class="search-input-wrapper">
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="укажите ФИО клиента"
+          placeholder="Укажите ФИО клиента"
           class="search-input"
         />
         <img src="@/assets/search.svg" class="search-icon" />
       </div>
+
       <button class="filterButton" @click="toggleBalanceSort">Фильтр по балансу</button>
     </div>
 
     <div class="clients-section">
-      <div class="client-list-container">
-        <template v-for="client in filteredClients" :key="client.id">
-          <div
-            v-if="filteredClients.length"
-            :style="{ backgroundColor: client.hex }"
-            class="client-card"
-          >
-            <div class="card-info">
-              <div class="info-top">
-                <p class="fio">{{ client.surname }} {{ client.name }} {{ client.patronymic }}</p>
-                (UTC{{ client.timezone }})
-              </div>
-              <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
+      <div v-if="filteredClients.length" class="client-list-container">
+        <div
+          v-for="client in filteredClients"
+          :key="client.id"
+          class="client-card"
+          :style="{ backgroundColor: client.color }"
+        >
+          <div class="card-info">
+            <div class="info-top">
+              <p class="fio">
+                {{ getClientFullName(client) }}
+              </p>
+              <span>(UTC{{ client.timezone }})</span>
             </div>
-            <div class="card-client-info">
-              <div>Класс: {{ client.grade }}</div>
-              <div>Баланс: {{ client.balance }}</div>
-              <div>Статус: {{ statusDic[client.status] }}</div>
-            </div>
-            <div class="card-action">
-              <button
-                @click="openModalEditClient(client)"
-                v-if="authStore.user.role == 'admin' || authStore.user.role == 'manager'"
-              >
-                <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-              </button>
-            </div>
+
+            <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
           </div>
-          <div v-else class="no-clients">Нет студентов</div>
-        </template>
+
+          <div class="card-client-info">
+            <div>Класс: {{ client.grade }}</div>
+            <div>Баланс: {{ client.balance }}</div>
+            <div>Статус: {{ statusLabels[client.status] || client.status }}</div>
+          </div>
+
+          <div class="card-action">
+            <button v-if="canManageClients" @click="openModalEditClient(client)">
+              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      <div v-else class="no-clients">Нет клиентов</div>
     </div>
 
     <ModalCreateClient
@@ -62,6 +64,7 @@
       @closeModalCreateClient="closeModalCreateClient"
       @addClient="addClient"
     />
+
     <ModalEditClient
       :IsOpenModalEditClient="isOpenModalEditClient"
       :clientData="editClient"
@@ -72,75 +75,89 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateClient from '@/components/ModalCreateClient.vue'
 import ModalEditClient from '@/components/ModalEditClient.vue'
-import { ref, computed, watch, onMounted } from 'vue'
+
 import { useClientsStore } from '@/stores/clients'
 import { useAuthStore } from '@/stores/auth'
 
+const clientsStore = useClientsStore()
+const authStore = useAuthStore()
+
+const { clients } = storeToRefs(clientsStore)
+
 const isOpenModalCreateClient = ref(false)
 const isOpenModalEditClient = ref(false)
-const ClientsStore = useClientsStore()
-const authStore = useAuthStore()
 const searchQuery = ref('')
 const isSortedByBalance = ref(false)
-const clients = ref([])
-const statusDic = { active: 'занимается', unactive: 'не занимается' }
-const editClient = ref({})
+const editClient = ref(null)
 
-const closeModalCreateClient = () => {
-  isOpenModalCreateClient.value = false
+const statusLabels = {
+  active: 'занимается',
+  inactive: 'не занимается',
 }
 
-const openModalCreateClient = () => {
+const canManageClients = computed(() => {
+  return authStore.user?.role === 'admin' || authStore.user?.role === 'manager'
+})
+
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase())
+
+const filteredClients = computed(() => {
+  let result = [...clients.value]
+
+  if (normalizedSearchQuery.value) {
+    result = result.filter((client) =>
+      getClientFullName(client).toLowerCase().includes(normalizedSearchQuery.value),
+    )
+  }
+
+  if (isSortedByBalance.value) {
+    result.sort((a, b) => a.balance - b.balance)
+  }
+
+  return result
+})
+
+function getClientFullName(client) {
+  return `${client.surname} ${client.name} ${client.patronymic}`.trim()
+}
+
+function openModalCreateClient() {
   isOpenModalCreateClient.value = true
 }
 
-const updateClients = () => {
-  clients.value = ClientsStore.clients
+function closeModalCreateClient() {
+  isOpenModalCreateClient.value = false
 }
 
-const closeModalEditClient = () => {
-  isOpenModalEditClient.value = false
-}
-
-const openModalEditClient = (client) => {
+function openModalEditClient(client) {
+  editClient.value = { ...client }
   isOpenModalEditClient.value = true
-  editClient.value = client
 }
 
-const addClient = (newClient) => {
-  ClientsStore.createClient(newClient)
-  updateClients()
+function closeModalEditClient() {
+  isOpenModalEditClient.value = false
+  editClient.value = null
 }
 
-const toggleBalanceSort = () => {
+function addClient(newClient) {
+  clientsStore.createClient(newClient)
+  closeModalCreateClient()
+}
+
+function saveClient(client) {
+  clientsStore.updateClient(client)
+  closeModalEditClient()
+}
+
+function toggleBalanceSort() {
   isSortedByBalance.value = !isSortedByBalance.value
 }
-
-const filteredClients = computed(() => {
-  let sortedClients = clients.value.filter((client) =>
-    `${client.surname} ${client.name} ${client.patronymic}`
-      .toLowerCase()
-      .includes(searchQuery.value.toLowerCase()),
-  )
-
-  if (isSortedByBalance.value) {
-    return sortedClients.sort((a, b) => a.balance - b.balance)
-  }
-
-  return sortedClients
-})
-
-const saveClient = (client) => {
-  ClientsStore.updateClient(client)
-  updateClients()
-}
-
-watch(() => ClientsStore.clients, updateClients, { deep: true })
-
-onMounted(updateClients)
 </script>
 
 <style scoped>

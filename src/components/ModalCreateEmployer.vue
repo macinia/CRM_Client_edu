@@ -4,66 +4,61 @@
       <span>Новый сотрудник</span>
     </template>
 
-    <form @submit.prevent="createEmployer()">
-      <!-- Основные поля пользователя -->
-      <div v-for="field in userFields" :key="field.name" class="Input-item">
+    <form class="employer-form" @submit.prevent="createEmployer">
+      <div class="Input-item" v-for="field in fields" :key="field.name">
         <label :for="field.name">{{ field.label }}</label>
 
-        <!-- Обработка разных типов полей -->
         <input
-          v-if="
-            field.type === 'text' ||
-            field.type === 'email' ||
-            field.type === 'tel' ||
-            field.type === 'password' ||
-            field.type === 'color'
-          "
+          v-if="field.type !== 'select'"
           :id="field.name"
+          v-model="form[field.name]"
           :type="field.type"
           :placeholder="field.placeholder"
-          v-model="newEmployerInputs.user[field.name]"
           :required="field.required"
         />
 
         <select
-          v-else-if="field.type === 'select'"
+          v-else
           :id="field.name"
-          v-model="newEmployerInputs.user[field.name]"
+          v-model="form[field.name]"
           :required="field.required"
+          @change="handleRoleChange"
         >
-          <option value="">{{ field.placeholder || 'Выберите роль' }}</option>
+          <option value="">{{ field.placeholder }}</option>
           <option v-for="option in field.options" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
         </select>
       </div>
 
-      <!-- Блок предметов для преподавателя -->
-      <div v-if="newEmployerInputs.user.role === 'Преподаватель'" class="subjects-block">
-        <div v-for="(subject, index) in newEmployerInputs.subjects" :key="index" class="Input-item">
-          <label :for="'subject-' + index">Предмет {{ index + 1 }}</label>
+      <div v-if="form.role === 'teacher'" class="subjects-block">
+        <div class="subjects-title">Предметы</div>
+
+        <div v-for="(subject, index) in form.subjects" :key="index" class="Input-item">
+          <label :for="`subject-${index}`">Предмет {{ index + 1 }}</label>
+
           <div class="subject-input-wrapper">
             <input
-              :id="'subject-' + index"
+              :id="`subject-${index}`"
+              v-model="form.subjects[index]"
               type="text"
-              v-model="newEmployerInputs.subjects[index]"
               placeholder="Введите название предмета"
             />
+
             <button
-              v-if="index === newEmployerInputs.subjects.length - 1"
+              v-if="index === form.subjects.length - 1"
               type="button"
               class="add-subject-btn"
               @click="addSubject"
-              title="Добавить предмет"
             >
               +
             </button>
+
             <button
-              v-if="newEmployerInputs.subjects.length > 1"
+              v-if="form.subjects.length > 1"
               type="button"
               class="remove-subject-btn"
               @click="removeSubject(index)"
-              title="Удалить предмет"
             >
               ×
             </button>
@@ -71,38 +66,34 @@
         </div>
       </div>
 
-      <!-- Поле примечаний -->
       <div class="Input-item">
         <label for="notes">Примечания</label>
-        <textarea
-          id="notes"
-          v-model="newEmployerInputs.notes"
-          placeholder="Введите примечания"
-          rows="3"
-        />
+        <textarea id="notes" v-model="form.notes" placeholder="Введите примечания" rows="3" />
       </div>
 
-      <button type="submit">Создать сотрудника</button>
+      <div class="form-actions">
+        <button type="submit" class="submit-btn">Создать сотрудника</button>
+      </div>
     </form>
   </ModalLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import ModalLayout from './ModalLayout.vue'
 import { useEmployersStore } from '@/stores/employers'
 
-const emit = defineEmits(['closeModalCreateEmployer'])
-const EmployersStore = useEmployersStore()
-
-const props = defineProps({
+defineProps({
   IsOpenModalCreateEmployer: {
     type: Boolean,
     required: true,
   },
 })
 
-const userFields = computed(() => [
+const emit = defineEmits(['closeModalCreateEmployer'])
+const employersStore = useEmployersStore()
+
+const fields = [
   {
     name: 'surname',
     label: 'Фамилия',
@@ -126,7 +117,7 @@ const userFields = computed(() => [
   },
   {
     name: 'phone',
-    label: 'Номер телефона',
+    label: 'Телефон',
     type: 'tel',
     placeholder: '+7 (999) 999-99-99',
     required: true,
@@ -142,134 +133,118 @@ const userFields = computed(() => [
     name: 'timezone',
     label: 'Часовой пояс',
     type: 'text',
-    placeholder: 'Europe/Moscow',
+    placeholder: '+3',
     required: false,
   },
   {
-    name: 'hex',
-    label: 'Цвет',
+    name: 'color',
+    label: 'Цвет карточки',
     type: 'color',
     placeholder: '#802e87',
     required: false,
   },
   {
     name: 'role',
-    label: 'Роль в системе',
+    label: 'Роль',
     type: 'select',
     placeholder: 'Выберите роль',
     required: true,
     options: [
-      { value: 'Администратор', label: 'Администратор' },
-      { value: 'Менеджер', label: 'Менеджер' },
-      { value: 'Преподаватель', label: 'Преподаватель' },
+      { value: 'admin', label: 'Администратор' },
+      { value: 'manager', label: 'Менеджер' },
+      { value: 'teacher', label: 'Преподаватель' },
     ],
   },
-  {
-    name: 'password',
-    label: 'Пароль',
-    type: 'password',
-    placeholder: 'Введите пароль',
-    required: true,
-  },
-])
+]
 
-// Данные формы
-const newEmployerInputs = ref({
-  user: {
-    surname: '',
-    name: '',
-    patronymic: '',
-    email: '',
-    phone: '',
-    timezone: '',
-    role: '',
-    hex: '#802e87',
-    password: '',
-  },
-  subjects: [''],
+const createInitialForm = () => ({
+  surname: '',
+  name: '',
+  patronymic: '',
+  email: '',
+  phone: '',
+  timezone: '+3',
+  role: '',
+  color: '#802e87',
   notes: '',
+  subjects: [''],
+  grades: [],
+  status: 'active',
+  organizationId: 0,
 })
 
-// Методы для работы с предметами
-const addSubject = () => {
-  newEmployerInputs.value.subjects.push('')
-}
+const form = ref(createInitialForm())
 
-const removeSubject = (index) => {
-  if (newEmployerInputs.value.subjects.length > 1) {
-    newEmployerInputs.value.subjects.splice(index, 1)
+function handleRoleChange() {
+  if (form.value.role === 'teacher' && !form.value.subjects.length) {
+    form.value.subjects = ['']
+    return
+  }
+
+  if (form.value.role !== 'teacher') {
+    form.value.subjects = ['']
   }
 }
 
-// Валидация формы
-const validateForm = () => {
-  const { surname, name, email, phone, role, password } = newEmployerInputs.value.user
+function addSubject() {
+  form.value.subjects.push('')
+}
 
-  if (!surname || !name || !email || !phone || !role || !password) {
-    alert('Пожалуйста, заполните все обязательные поля')
+function removeSubject(index) {
+  if (form.value.subjects.length === 1) return
+  form.value.subjects.splice(index, 1)
+}
+
+function validateForm() {
+  if (
+    !form.value.surname ||
+    !form.value.name ||
+    !form.value.phone ||
+    !form.value.email ||
+    !form.value.role
+  ) {
+    alert('Заполните обязательные поля')
     return false
   }
 
-  // Валидация email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
-    alert('Пожалуйста, введите корректный email')
+  if (!emailRegex.test(form.value.email)) {
+    alert('Введите корректный email')
     return false
   }
 
-  // Валидация телефона (простая проверка)
   const phoneRegex = /^\+?[0-9\s\-()]{10,}$/
-  if (!phoneRegex.test(phone)) {
-    alert('Пожалуйста, введите корректный номер телефона')
+  if (!phoneRegex.test(form.value.phone)) {
+    alert('Введите корректный номер телефона')
     return false
   }
 
   return true
 }
 
-// Создание сотрудника
-const createEmployer = () => {
+function createEmployer() {
   if (!validateForm()) return
 
-  // Фильтруем пустые предметы
-  const filteredSubjects = newEmployerInputs.value.subjects.filter((s) => s.trim() !== '')
-
-  let newEmployer = {
-    user: { ...newEmployerInputs.value.user },
-    notes: newEmployerInputs.value.notes,
-    subjects: filteredSubjects.length ? filteredSubjects : undefined,
+  const employer = {
+    ...form.value,
+    subjects:
+      form.value.role === 'teacher'
+        ? form.value.subjects.filter((subject) => subject.trim() !== '')
+        : [],
   }
 
-  console.log('Новый сотрудник:', newEmployer)
-
-  EmployersStore.createEmployer(newEmployer)
+  employersStore.createEmployer(employer)
+  form.value = createInitialForm()
   emit('closeModalCreateEmployer')
-
-  // Сброс формы
-  resetForm()
-}
-
-// Сброс формы
-const resetForm = () => {
-  newEmployerInputs.value = {
-    user: {
-      surname: '',
-      name: '',
-      patronymic: '',
-      email: '',
-      phone: '',
-      timezone: '',
-      role: '',
-      hex: '#802e87',
-      password: '',
-    },
-    subjects: [''],
-    notes: '',
-  }
 }
 </script>
 
 <style scoped>
+.employer-form {
+  display: flex;
+  flex-direction: column;
+}
+
 .Input-item {
   display: flex;
   flex-direction: column;
@@ -293,9 +268,6 @@ const resetForm = () => {
   border-radius: 17px;
   background-color: #f5f5f5;
   outline: none;
-  transition:
-    border-color 0.3s,
-    box-shadow 0.3s;
 }
 
 .Input-item input:focus,
@@ -303,6 +275,20 @@ const resetForm = () => {
 .Input-item textarea:focus {
   border-color: #5d1e5e;
   box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.1);
+}
+
+.subjects-block {
+  margin: 8px 0 16px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border: 2px solid #802e87;
+  border-radius: 17px;
+}
+
+.subjects-title {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .subject-input-wrapper {
@@ -322,12 +308,7 @@ const resetForm = () => {
   border: none;
   border-radius: 50%;
   font-size: 20px;
-  font-weight: bold;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
 }
 
 .add-subject-btn {
@@ -335,55 +316,31 @@ const resetForm = () => {
   color: white;
 }
 
-.add-subject-btn:hover {
-  background-color: #45a049;
-  transform: scale(1.1);
-}
-
 .remove-subject-btn {
   background-color: #f44336;
   color: white;
 }
 
-.remove-subject-btn:hover {
-  background-color: #da190b;
-  transform: scale(1.1);
+.form-actions {
+  margin-top: 8px;
 }
 
-.subjects-block {
-  margin: 20px 0;
-  padding: 15px;
-  background-color: #f9f9f9;
-  border-radius: 17px;
-  border: 2px solid #802e87;
-}
-
-button[type='submit'] {
+.submit-btn {
   width: 100%;
   padding: 14px;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 700;
   color: white;
   background-color: #802e87;
   border: none;
   border-radius: 17px;
   cursor: pointer;
-  transition:
-    background-color 0.3s,
-    transform 0.2s;
-  margin-top: 10px;
 }
 
-button[type='submit']:hover {
+.submit-btn:hover {
   background-color: #5d1e5e;
-  transform: translateY(-2px);
 }
 
-button[type='submit']:active {
-  transform: translateY(0);
-}
-
-/* Стили для поля color */
 input[type='color'] {
   height: 50px;
   padding: 5px;
