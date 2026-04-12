@@ -3,16 +3,17 @@
     <div class="header">
       <h1 class="logo">EduKrismash</h1>
     </div>
+
     <div class="main">
-      <div class="form">
+      <form class="form" @submit.prevent="handleAuth">
         <h2 class="form-header">Вход</h2>
 
         <div v-for="field in formFields" :key="field.id" class="Input-item">
           <label :for="field.id">{{ field.label }}</label>
           <input
-            :type="field.type"
             :id="field.id"
             v-model="authUser[field.model]"
+            :type="field.type"
             :placeholder="field.placeholder"
           />
 
@@ -21,20 +22,25 @@
           </div>
         </div>
 
+        <div v-if="errors.form" class="error-message form-error">
+          {{ errors.form }}
+        </div>
+
         <p class="reg-info">
           У вас нет аккаунта?
           <router-link class="link" to="/registration"> Зарегистрируйтесь </router-link>
         </p>
-        <button class="reg-btn" @click="handleAuth">Войти</button>
-      </div>
+
+        <button class="reg-btn" type="submit">Войти</button>
+      </form>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -46,7 +52,7 @@ const authUser = ref({
 
 const errors = ref({})
 
-const formFields = ref([
+const formFields = [
   {
     id: 'email',
     label: 'Почта',
@@ -60,19 +66,55 @@ const formFields = ref([
     label: 'Пароль',
     type: 'password',
     model: 'password',
+    placeholder: 'Введите пароль',
     required: true,
   },
-])
+]
 
-const handleAuth = async () => {
-  const userData = { ...authUser.value }
-  delete userData.confirmPassword
+const validateForm = () => {
+  errors.value = {}
 
-  await authStore.authUser(userData)
+  if (!authUser.value.email.trim()) {
+    errors.value.email = 'Введите email'
+  }
+
+  if (!authUser.value.password.trim()) {
+    errors.value.password = 'Введите пароль'
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (authUser.value.email && !emailRegex.test(authUser.value.email)) {
+    errors.value.email = 'Введите корректный email адрес'
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+const resetForm = () => {
   authUser.value = {
     email: '',
     password: '',
   }
+}
+
+const handleAuth = async () => {
+  const isValid = validateForm()
+
+  if (!isValid) {
+    return
+  }
+
+  const result = await authStore.authUser({
+    email: authUser.value.email,
+    password: authUser.value.password,
+  })
+
+  if (!result.success) {
+    errors.value.form = result.message
+    return
+  }
+
+  resetForm()
   router.push('/company')
 }
 </script>
@@ -99,7 +141,7 @@ const handleAuth = async () => {
 
 .form {
   width: 900px;
-  margin: 0px auto;
+  margin: 0 auto;
   padding-top: 48px;
   display: flex;
   flex-direction: column;
@@ -146,14 +188,20 @@ const handleAuth = async () => {
   margin-left: 4px;
 }
 
+.form-error {
+  width: 100%;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
 .reg-info {
   align-items: center;
-  margin: 0px auto;
+  margin: 0 auto 20px auto;
   width: fit-content;
   font-size: 26px;
   font-weight: 400;
-  margin-bottom: 20px;
 }
+
 .link {
   font-weight: 600;
   color: #802e87;

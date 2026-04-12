@@ -3,16 +3,17 @@
     <div class="header">
       <h1 class="logo">EduKrismash</h1>
     </div>
+
     <div class="main">
-      <div class="form">
+      <form class="form" @submit.prevent="handleRegister">
         <h2 class="form-header">Регистрация</h2>
 
         <div v-for="field in formFields" :key="field.id" class="Input-item">
           <label :for="field.id">{{ field.label }}</label>
           <input
-            :type="field.type"
             :id="field.id"
             v-model="newUser[field.model]"
+            :type="field.type"
             :placeholder="field.placeholder"
           />
 
@@ -21,20 +22,25 @@
           </div>
         </div>
 
+        <div v-if="errors.form" class="error-message form-error">
+          {{ errors.form }}
+        </div>
+
         <p class="reg-info">
           Вы уже зарегистрированы?
           <router-link class="link" to="/"> Войдите в аккаунт </router-link>
         </p>
-        <button class="reg-btn" @click="handleRegister">Зарегистрироваться</button>
-      </div>
+
+        <button class="reg-btn" type="submit">Зарегистрироваться</button>
+      </form>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -51,8 +57,7 @@ const newUser = ref({
 
 const errors = ref({})
 
-// Массив с конфигурацией полей формы
-const formFields = ref([
+const formFields = [
   {
     id: 'surname',
     label: 'Фамилия',
@@ -109,58 +114,39 @@ const formFields = ref([
     placeholder: 'Повторите пароль',
     required: true,
   },
-])
+]
 
 const validateForm = () => {
   errors.value = {}
 
-  formFields.value.forEach((field) => {
+  formFields.forEach((field) => {
     if (field.required && !newUser.value[field.model]?.trim()) {
       errors.value[field.model] = `Поле "${field.label}" обязательно для заполнения`
     }
   })
 
-  // Валидация email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (newUser.value.email && !emailRegex.test(newUser.value.email)) {
     errors.value.email = 'Введите корректный email адрес'
   }
 
-  // Валидация телефона
-  const phoneRegex = /^(\+7|8)[\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$/
-  if (newUser.value.phone && !phoneRegex.test(newUser.value.phone.replace(/\s/g, ''))) {
+  const phoneDigits = newUser.value.phone.replace(/\D/g, '')
+  if (newUser.value.phone && !/^7\d{10}$|^8\d{10}$/.test(phoneDigits)) {
     errors.value.phone = 'Введите корректный номер телефона'
   }
 
-  // Валидация пароля
   if (newUser.value.password && newUser.value.password.length < 6) {
     errors.value.password = 'Пароль должен содержать минимум 6 символов'
   }
 
-  // Проверка совпадения паролей
   if (newUser.value.password !== newUser.value.confirmPassword) {
     errors.value.confirmPassword = 'Пароли не совпадают'
   }
 
-  return {
-    isValid: Object.keys(errors.value).length === 0,
-    errors: errors.value,
-  }
+  return Object.keys(errors.value).length === 0
 }
 
-const handleRegister = async () => {
-  const validation = validateForm()
-
-  if (!validation.isValid) {
-    console.log('Ошибки валидации:', validation.errors)
-    return
-  }
-
-  const userData = { ...newUser.value, role: 'admin' }
-
-  delete userData.confirmPassword
-
-  await authStore.registerUser(userData)
+const resetForm = () => {
   newUser.value = {
     surname: '',
     name: '',
@@ -170,6 +156,33 @@ const handleRegister = async () => {
     password: '',
     confirmPassword: '',
   }
+}
+
+const handleRegister = async () => {
+  const isValid = validateForm()
+
+  if (!isValid) {
+    return
+  }
+
+  const userData = {
+    surname: newUser.value.surname,
+    name: newUser.value.name,
+    patronymic: newUser.value.patronymic,
+    email: newUser.value.email,
+    phone: newUser.value.phone,
+    password: newUser.value.password,
+    role: 'admin',
+  }
+
+  const result = await authStore.registerUser(userData)
+
+  if (!result.success) {
+    errors.value.form = result.message
+    return
+  }
+
+  resetForm()
   router.push('/company')
 }
 </script>
@@ -196,7 +209,7 @@ const handleRegister = async () => {
 
 .form {
   width: 900px;
-  margin: 0px auto;
+  margin: 0 auto;
   padding-top: 48px;
   display: flex;
   flex-direction: column;
@@ -243,14 +256,20 @@ const handleRegister = async () => {
   margin-left: 4px;
 }
 
+.form-error {
+  width: 100%;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
 .reg-info {
   align-items: center;
-  margin: 0px auto;
+  margin: 0 auto 20px auto;
   width: fit-content;
   font-size: 26px;
   font-weight: 400;
-  margin-bottom: 20px;
 }
+
 .link {
   font-weight: 600;
   color: #802e87;
