@@ -1,12 +1,16 @@
 <template>
-  <div v-if="IsOpen" class="wrapper">
+  <div v-if="IsOpen" class="wrapper" @click.self="$emit('close')">
     <div class="modal">
       <div class="modal-head">
-        <slot name="header"></slot>
-        <button @click="$emit('close')">
-          <img src="@/assets/krest.svg" alt="close" class="edit-icon" />
+        <div class="modal-title">
+          <slot name="header"></slot>
+        </div>
+
+        <button class="close-btn" @click="$emit('close')">
+          <img src="@/assets/krest.svg" alt="close" class="close-icon" />
         </button>
       </div>
+
       <div class="modal-content">
         <slot></slot>
       </div>
@@ -15,7 +19,8 @@
 </template>
 
 <script setup>
-const emit = defineEmits(['close'])
+defineEmits(['close'])
+
 defineProps({
   IsOpen: {
     type: Boolean,
@@ -27,11 +32,9 @@ defineProps({
 <style scoped>
 .wrapper {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.1);
+  inset: 0;
+  padding: 24px;
+  background-color: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,42 +42,57 @@ defineProps({
 }
 
 .modal {
-  background-color: #fffaff;
-  width: 960px;
-  max-height: 80vh; 
-  border-radius: 12px;
-  overflow: hidden;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
+  background-color: var(--color-surface);
+  border-radius: 24px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
 .modal-head {
+  min-height: 76px;
+  padding: 18px 20px 18px 24px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  font-size: 32px;
-  font-weight: bold;
-  background-color: #802e87;
-  color: #000000;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.modal-head button {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: white;
-  cursor: pointer;
+.modal-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-text);
 }
 
+.close-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--color-surface-muted);
+  transition: background-color var(--transition-base);
+}
+
+.close-btn:hover {
+  background-color: var(--color-primary-soft);
+}
+
+.close-icon {
+  width: 22px;
+  height: 22px;
+}
 
 .modal-content {
-  padding: 20px;
+  padding: 24px;
   overflow-y: auto;
-  max-height: 70vh;
-}
-.edit-icon {
-  width: 48px;
-  height: 48px;
 }
 </style>

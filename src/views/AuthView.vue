@@ -1,38 +1,49 @@
 <template>
-  <div class="page">
-    <div class="header">
-      <h1 class="logo">EduKrismash</h1>
-    </div>
-
-    <div class="main">
-      <form class="form" @submit.prevent="handleAuth">
-        <h2 class="form-header">Вход</h2>
-
-        <div v-for="field in formFields" :key="field.id" class="Input-item">
-          <label :for="field.id">{{ field.label }}</label>
-          <input
-            :id="field.id"
-            v-model="authUser[field.model]"
-            :type="field.type"
-            :placeholder="field.placeholder"
-          />
-
-          <div v-if="errors[field.model]" class="error-message">
-            {{ errors[field.model] }}
-          </div>
-        </div>
-
-        <div v-if="errors.form" class="error-message form-error">
-          {{ errors.form }}
-        </div>
-
-        <p class="reg-info">
-          У вас нет аккаунта?
-          <router-link class="link" to="/registration"> Зарегистрируйтесь </router-link>
+  <div class="auth-page">
+    <div class="auth-layout">
+      <section class="auth-brand">
+        <div class="brand-badge">CRM для онлайн-школы</div>
+        <h1 class="brand-title">EduKrismash</h1>
+        <p class="brand-text">
+          Управляйте сотрудниками, клиентами, занятиями и финансами в одном месте.
         </p>
+      </section>
 
-        <button class="reg-btn" type="submit">Войти</button>
-      </form>
+      <section class="auth-card">
+        <form class="auth-form" @submit.prevent="handleAuth">
+          <div class="form-top">
+            <h2 class="form-title">Вход</h2>
+            <p class="form-subtitle">Введите данные аккаунта для входа в систему</p>
+          </div>
+
+          <div v-for="field in formFields" :key="field.id" class="form-field">
+            <label :for="field.id" class="form-label">{{ field.label }}</label>
+
+            <input
+              :id="field.id"
+              v-model="authUser[field.model]"
+              :type="field.type"
+              :placeholder="field.placeholder"
+              class="form-input"
+            />
+
+            <div v-if="errors[field.model]" class="error-message">
+              {{ errors[field.model] }}
+            </div>
+          </div>
+
+          <div v-if="errors.form" class="error-message form-error">
+            {{ errors.form }}
+          </div>
+
+          <button class="submit-btn" type="submit">Войти</button>
+
+          <p class="bottom-text">
+            У вас нет аккаунта?
+            <router-link class="bottom-link" to="/registration"> Зарегистрируйтесь </router-link>
+          </p>
+        </form>
+      </section>
     </div>
   </div>
 </template>
@@ -120,107 +131,173 @@ const handleAuth = async () => {
 </script>
 
 <style scoped>
-.header {
-  padding: 40px 100px 8px 100px;
-  border-bottom: 2px solid #802e87;
-}
-.logo {
-  font-weight: 500;
-  font-size: 40px;
-}
-.main {
-  width: 100%;
-}
-
-.form-header {
-  margin-bottom: 30px;
-  font-size: 40px;
-  text-align: start;
-  width: 100%;
-}
-
-.form {
-  width: 900px;
-  margin: 0 auto;
-  padding-top: 48px;
+.auth-page {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(128, 46, 135, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(128, 46, 135, 0.1), transparent 26%),
+    var(--color-bg);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding-bottom: 48px;
+  justify-content: center;
 }
 
-.Input-item {
+.auth-layout {
+  width: 100%;
+  max-width: 1120px;
+  min-height: 680px;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  border-radius: 32px;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-brand {
+  padding: 56px;
+  background: linear-gradient(145deg, #f4e9f5 0%, #ead9ec 100%);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-  width: 100%;
+  justify-content: center;
+  gap: 18px;
 }
 
-.Input-item label {
-  font-size: 24px;
+.brand-badge {
+  width: fit-content;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(128, 46, 135, 0.1);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.brand-title {
+  font-size: 52px;
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--color-text);
+}
+
+.brand-text {
+  max-width: 440px;
+  font-size: 18px;
   font-weight: 500;
+  line-height: 1.55;
+  color: var(--color-text-muted);
 }
 
-.Input-item input,
-.Input-item select,
-.Input-item textarea {
+.auth-card {
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-form {
   width: 100%;
-  padding: 16px 14px;
-  font-size: 16px;
-  border: 1px solid #802e87;
-  border-radius: 17px;
-  background-color: #f5f5f5;
-  outline: none;
-  transition: border-color 0.3s;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
 }
 
-.Input-item input:focus,
-.Input-item select:focus,
-.Input-item textarea:focus {
-  border-color: #5d1e5e;
+.form-top {
+  margin-bottom: 28px;
+}
+
+.form-title {
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.form-subtitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.form-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.form-input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  font-size: 15px;
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.08);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .error-message {
-  color: #d32f2f;
-  font-size: 14px;
-  margin-top: 4px;
-  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-danger);
 }
 
 .form-error {
-  width: 100%;
   margin-bottom: 16px;
+}
+
+.submit-btn {
+  min-height: 52px;
+  border-radius: 14px;
+  background-color: var(--color-primary);
+  color: #ffffff;
   font-size: 16px;
+  font-weight: 800;
+  transition:
+    background-color var(--transition-base),
+    transform var(--transition-base);
 }
 
-.reg-info {
-  align-items: center;
-  margin: 0 auto 20px auto;
-  width: fit-content;
-  font-size: 26px;
-  font-weight: 400;
+.submit-btn:hover {
+  background-color: var(--color-primary-hover);
 }
 
-.link {
-  font-weight: 600;
-  color: #802e87;
-  text-decoration: none;
+.bottom-text {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
-.reg-btn {
-  padding: 18px 36px;
-  font-size: 30px;
-  font-weight: bold;
-  color: black;
-  background-color: #d9bddb;
-  border: 2px solid #802e87;
-  border-radius: 36px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.reg-btn:hover {
-  background-color: #bf92c2;
+.bottom-link {
+  color: var(--color-primary);
+  font-weight: 800;
 }
 </style>

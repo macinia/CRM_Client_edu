@@ -1,86 +1,63 @@
 <template>
-  <ModalLayout :IsOpen="isOpenModalEditEmployer" @close="$emit('closeModalEditEmployer')">
+  <ModalLayout :IsOpen="isOpenModalEditEmployer" @close="handleClose">
     <template #header>
       <span>Редактирование сотрудника</span>
     </template>
 
-    <form class="employer-form" @submit.prevent="updateEmployer">
-      <div class="Input-item" v-for="field in fields" :key="field.name">
-        <label :for="field.name">{{ field.label }}</label>
+    <UiFormBuilder
+      v-model="form"
+      :fields="fields"
+      :errors="errors"
+      :form-error="formError"
+      submit-label="Сохранить изменения"
+      :columns="2"
+      @submit="updateEmployer"
+    >
+      <template #after-fields>
+        <div v-if="form.role === 'teacher'" class="subjects-block">
+          <div class="subjects-title">Предметы</div>
 
-        <input
-          v-if="field.type !== 'select'"
-          :id="field.name"
-          v-model="form[field.name]"
-          :type="field.type"
-          :placeholder="field.placeholder"
-          :required="field.required"
-        />
+          <div v-for="(subject, index) in form.subjects" :key="index" class="subject-field">
+            <label :for="`subject-${index}`" class="subject-label"> Предмет {{ index + 1 }} </label>
 
-        <select
-          v-else
-          :id="field.name"
-          v-model="form[field.name]"
-          :required="field.required"
-          @change="handleRoleChange"
-        >
-          <option value="">{{ field.placeholder }}</option>
-          <option v-for="option in field.options" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
+            <div class="subject-input-wrapper">
+              <input
+                :id="`subject-${index}`"
+                v-model="form.subjects[index]"
+                type="text"
+                placeholder="Введите название предмета"
+                class="subject-input"
+              />
 
-      <div v-if="form.role === 'teacher'" class="subjects-block">
-        <div class="subjects-title">Предметы</div>
+              <button
+                v-if="index === form.subjects.length - 1"
+                type="button"
+                class="circle-btn add-btn"
+                @click="addSubject"
+              >
+                +
+              </button>
 
-        <div v-for="(subject, index) in form.subjects" :key="index" class="Input-item">
-          <label :for="`subject-${index}`">Предмет {{ index + 1 }}</label>
-
-          <div class="subject-input-wrapper">
-            <input
-              :id="`subject-${index}`"
-              v-model="form.subjects[index]"
-              type="text"
-              placeholder="Введите название предмета"
-            />
-
-            <button
-              v-if="index === form.subjects.length - 1"
-              type="button"
-              class="add-subject-btn"
-              @click="addSubject"
-            >
-              +
-            </button>
-
-            <button
-              v-if="form.subjects.length > 1"
-              type="button"
-              class="remove-subject-btn"
-              @click="removeSubject(index)"
-            >
-              ×
-            </button>
+              <button
+                v-if="form.subjects.length > 1"
+                type="button"
+                class="circle-btn remove-btn"
+                @click="removeSubject(index)"
+              >
+                ×
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div class="Input-item">
-        <label for="notes">Примечания</label>
-        <textarea id="notes" v-model="form.notes" placeholder="Введите примечания" rows="3" />
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="submit-btn">Сохранить изменения</button>
-      </div>
-    </form>
+      </template>
+    </UiFormBuilder>
   </ModalLayout>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import ModalLayout from './ModalLayout.vue'
+import UiFormBuilder from '@/components/ui/UiFormBuilder.vue'
 
 const props = defineProps({
   isOpenModalEditEmployer: {
@@ -115,7 +92,6 @@ const fields = [
     label: 'Отчество',
     type: 'text',
     placeholder: 'Введите отчество',
-    required: false,
   },
   {
     name: 'phone',
@@ -130,20 +106,18 @@ const fields = [
     type: 'email',
     placeholder: 'example@mail.com',
     required: true,
+    fullWidth: true,
   },
   {
     name: 'timezone',
     label: 'Часовой пояс',
     type: 'text',
     placeholder: '+3',
-    required: false,
   },
   {
     name: 'color',
     label: 'Цвет карточки',
     type: 'color',
-    placeholder: '#802e87',
-    required: false,
   },
   {
     name: 'role',
@@ -156,6 +130,14 @@ const fields = [
       { value: 'manager', label: 'Менеджер' },
       { value: 'teacher', label: 'Преподаватель' },
     ],
+  },
+  {
+    name: 'notes',
+    label: 'Примечания',
+    type: 'textarea',
+    placeholder: 'Введите примечания',
+    rows: 3,
+    fullWidth: true,
   },
 ]
 
@@ -177,10 +159,15 @@ const createInitialForm = () => ({
 })
 
 const form = ref(createInitialForm())
+const errors = ref({})
+const formError = ref('')
 
 watch(
   () => props.employerData,
   (value) => {
+    errors.value = {}
+    formError.value = ''
+
     if (!value || !Object.keys(value).length) {
       form.value = createInitialForm()
       return
@@ -206,15 +193,28 @@ watch(
   { immediate: true, deep: true },
 )
 
-function handleRoleChange() {
-  if (form.value.role === 'teacher' && !form.value.subjects.length) {
-    form.value.subjects = ['']
-    return
-  }
+watch(
+  () => form.value.role,
+  (role) => {
+    if (role === 'teacher') {
+      if (!form.value.subjects.length) {
+        form.value.subjects = ['']
+      }
+      return
+    }
 
-  if (form.value.role !== 'teacher') {
     form.value.subjects = ['']
-  }
+  },
+)
+
+function resetErrors() {
+  errors.value = {}
+  formError.value = ''
+}
+
+function handleClose() {
+  resetErrors()
+  emit('closeModalEditEmployer')
 }
 
 function addSubject() {
@@ -227,152 +227,154 @@ function removeSubject(index) {
 }
 
 function validateForm() {
-  if (
-    !form.value.surname ||
-    !form.value.name ||
-    !form.value.phone ||
-    !form.value.email ||
-    !form.value.role
-  ) {
-    alert('Заполните обязательные поля')
-    return false
+  errors.value = {}
+  formError.value = ''
+
+  if (!form.value.surname?.trim()) {
+    errors.value.surname = 'Введите фамилию'
+  }
+
+  if (!form.value.name?.trim()) {
+    errors.value.name = 'Введите имя'
+  }
+
+  if (!form.value.phone?.trim()) {
+    errors.value.phone = 'Введите телефон'
+  }
+
+  if (!form.value.email?.trim()) {
+    errors.value.email = 'Введите email'
+  }
+
+  if (!form.value.role) {
+    errors.value.role = 'Выберите роль'
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(form.value.email)) {
-    alert('Введите корректный email')
-    return false
+  if (form.value.email && !emailRegex.test(form.value.email)) {
+    errors.value.email = 'Введите корректный email'
   }
 
   const phoneRegex = /^\+?[0-9\s\-()]{10,}$/
-  if (!phoneRegex.test(form.value.phone)) {
-    alert('Введите корректный номер телефона')
-    return false
+  if (form.value.phone && !phoneRegex.test(form.value.phone)) {
+    errors.value.phone = 'Введите корректный номер телефона'
   }
 
-  return true
+  if (form.value.role === 'teacher') {
+    const validSubjects = form.value.subjects.filter((subject) => subject.trim() !== '')
+    if (!validSubjects.length) {
+      formError.value = 'Для преподавателя нужно указать хотя бы один предмет'
+    }
+  }
+
+  return Object.keys(errors.value).length === 0 && !formError.value
 }
 
 function updateEmployer() {
-  if (!validateForm()) return
+  if (!validateForm()) {
+    if (!formError.value) {
+      formError.value = 'Проверьте заполнение полей формы'
+    }
+    return
+  }
 
-  const updatedEmployer = {
+  emit('saveEmployer', {
     ...form.value,
     subjects:
       form.value.role === 'teacher'
         ? form.value.subjects.filter((subject) => subject.trim() !== '')
         : [],
-  }
-
-  emit('saveEmployer', updatedEmployer)
+  })
 }
 </script>
 
 <style scoped>
-.employer-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.Input-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.Input-item label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.Input-item input,
-.Input-item select,
-.Input-item textarea {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 2px solid #802e87;
-  border-radius: 17px;
-  background-color: #f5f5f5;
-  outline: none;
-}
-
-.Input-item input:focus,
-.Input-item select:focus,
-.Input-item textarea:focus {
-  border-color: #5d1e5e;
-  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.1);
-}
-
 .subjects-block {
-  margin: 8px 0 16px;
-  padding: 16px;
-  background-color: #f9f9f9;
-  border: 2px solid #802e87;
-  border-radius: 17px;
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background-color: var(--color-surface-muted);
 }
 
 .subjects-title {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.subject-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subject-field + .subject-field {
+  margin-top: 14px;
+}
+
+.subject-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .subject-input-wrapper {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 8px;
 }
 
-.subject-input-wrapper input {
+.subject-input {
   flex: 1;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
-.add-subject-btn,
-.remove-subject-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
+.subject-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.08);
+}
+
+.subject-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.circle-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   border-radius: 50%;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.add-subject-btn {
-  background-color: #4caf50;
-  color: white;
-}
-
-.remove-subject-btn {
-  background-color: #f44336;
-  color: white;
-}
-
-.form-actions {
-  margin-top: 8px;
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 14px;
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
   font-weight: 700;
-  color: white;
-  background-color: #802e87;
-  border: none;
-  border-radius: 17px;
-  cursor: pointer;
+  color: #ffffff;
+  transition:
+    transform var(--transition-base),
+    opacity var(--transition-base);
 }
 
-.submit-btn:hover {
-  background-color: #5d1e5e;
+.circle-btn:hover {
+  transform: translateY(-1px);
 }
 
-input[type='color'] {
-  height: 50px;
-  padding: 5px;
-  cursor: pointer;
+.add-btn {
+  background-color: #4caf50;
+}
+
+.remove-btn {
+  background-color: #f44336;
 }
 </style>

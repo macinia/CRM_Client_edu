@@ -1,6 +1,5 @@
 <template>
   <div class="app">
-    {{ authStore.user }}
     <RouterView />
   </div>
 </template>

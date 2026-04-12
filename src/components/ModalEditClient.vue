@@ -1,40 +1,25 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalEditClient" @close="$emit('closeModalEditClient')">
+  <ModalLayout :IsOpen="IsOpenModalEditClient" @close="handleClose">
     <template #header>
       <span>Редактирование клиента</span>
     </template>
 
-    <form class="client-form" @submit.prevent="updateClient">
-      <div class="Input-item" v-for="field in fields" :key="field.name">
-        <label :for="field.name">{{ field.label }}</label>
-
-        <input
-          v-if="field.type !== 'select'"
-          :id="field.name"
-          v-model="form[field.name]"
-          :type="field.type"
-          :placeholder="field.placeholder"
-          :required="field.required"
-        />
-
-        <select v-else :id="field.name" v-model="form[field.name]" :required="field.required">
-          <option value="">{{ field.placeholder }}</option>
-          <option v-for="option in field.options" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="submit-btn">Сохранить изменения</button>
-      </div>
-    </form>
+    <UiFormBuilder
+      v-model="form"
+      :fields="fields"
+      :errors="errors"
+      :form-error="formError"
+      submit-label="Сохранить изменения"
+      :columns="2"
+      @submit="updateClient"
+    />
   </ModalLayout>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import ModalLayout from './ModalLayout.vue'
+import UiFormBuilder from '@/components/ui/UiFormBuilder.vue'
 
 const props = defineProps({
   IsOpenModalEditClient: {
@@ -69,7 +54,6 @@ const fields = [
     label: 'Отчество',
     type: 'text',
     placeholder: 'Введите отчество',
-    required: false,
   },
   {
     name: 'phone',
@@ -84,41 +68,38 @@ const fields = [
     type: 'email',
     placeholder: 'example@mail.com',
     required: true,
+    fullWidth: true,
   },
   {
     name: 'timezone',
     label: 'Часовой пояс',
     type: 'text',
     placeholder: '+3',
-    required: false,
   },
   {
     name: 'color',
     label: 'Цвет карточки',
     type: 'color',
-    placeholder: '#E1DEF7',
-    required: false,
   },
   {
     name: 'birthDate',
     label: 'Дата рождения',
     type: 'date',
-    placeholder: '',
-    required: false,
   },
   {
     name: 'grade',
     label: 'Класс',
     type: 'number',
     placeholder: 'Введите класс',
-    required: false,
+    min: 1,
+    step: 1,
   },
   {
     name: 'balance',
     label: 'Баланс',
     type: 'number',
     placeholder: 'Введите баланс',
-    required: false,
+    step: 1,
   },
   {
     name: 'status',
@@ -130,6 +111,7 @@ const fields = [
       { value: 'active', label: 'Занимается' },
       { value: 'inactive', label: 'Не занимается' },
     ],
+    fullWidth: true,
   },
 ]
 
@@ -150,10 +132,15 @@ const createInitialForm = () => ({
 })
 
 const form = ref(createInitialForm())
+const errors = ref({})
+const formError = ref('')
 
 watch(
   () => props.clientData,
   (value) => {
+    errors.value = {}
+    formError.value = ''
+
     if (!value || !Object.keys(value).length) {
       form.value = createInitialForm()
       return
@@ -178,35 +165,58 @@ watch(
   { immediate: true, deep: true },
 )
 
+function resetErrors() {
+  errors.value = {}
+  formError.value = ''
+}
+
+function handleClose() {
+  resetErrors()
+  emit('closeModalEditClient')
+}
+
 function validateForm() {
-  if (
-    !form.value.surname ||
-    !form.value.name ||
-    !form.value.phone ||
-    !form.value.email ||
-    !form.value.status
-  ) {
-    alert('Заполните обязательные поля')
-    return false
+  errors.value = {}
+  formError.value = ''
+
+  if (!form.value.surname?.trim()) {
+    errors.value.surname = 'Введите фамилию'
+  }
+
+  if (!form.value.name?.trim()) {
+    errors.value.name = 'Введите имя'
+  }
+
+  if (!form.value.phone?.trim()) {
+    errors.value.phone = 'Введите телефон'
+  }
+
+  if (!form.value.email?.trim()) {
+    errors.value.email = 'Введите email'
+  }
+
+  if (!form.value.status) {
+    errors.value.status = 'Выберите статус'
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(form.value.email)) {
-    alert('Введите корректный email')
-    return false
+  if (form.value.email && !emailRegex.test(form.value.email)) {
+    errors.value.email = 'Введите корректный email'
   }
 
   const phoneRegex = /^\+?[0-9\s\-()]{10,}$/
-  if (!phoneRegex.test(form.value.phone)) {
-    alert('Введите корректный номер телефона')
-    return false
+  if (form.value.phone && !phoneRegex.test(form.value.phone)) {
+    errors.value.phone = 'Введите корректный номер телефона'
   }
 
-  return true
+  return Object.keys(errors.value).length === 0
 }
 
 function updateClient() {
-  if (!validateForm()) return
+  if (!validateForm()) {
+    formError.value = 'Проверьте заполнение полей формы'
+    return
+  }
 
   emit('saveClient', {
     ...form.value,
@@ -215,66 +225,3 @@ function updateClient() {
   })
 }
 </script>
-
-<style scoped>
-.client-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.Input-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.Input-item label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.Input-item input,
-.Input-item select {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 2px solid #802e87;
-  border-radius: 17px;
-  background-color: #f5f5f5;
-  outline: none;
-}
-
-.Input-item input:focus,
-.Input-item select:focus {
-  border-color: #5d1e5e;
-  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.1);
-}
-
-.form-actions {
-  margin-top: 8px;
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 14px;
-  font-size: 16px;
-  font-weight: 700;
-  color: white;
-  background-color: #802e87;
-  border: none;
-  border-radius: 17px;
-  cursor: pointer;
-}
-
-.submit-btn:hover {
-  background-color: #5d1e5e;
-}
-
-input[type='color'] {
-  height: 50px;
-  padding: 5px;
-  cursor: pointer;
-}
-</style>

@@ -1,90 +1,38 @@
 <template>
   <PageLayout>
-    <div class="finances-top">
-      <h1>Финансы</h1>
+    <UiPageHeader
+      title="Финансы"
+      :action-visible="showAddButton"
+      :action-label="addButtonTitle"
+      @action="openCreateModal"
+    />
 
-      <button v-if="showAddButton" @click="openCreateModal">
-        <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
-        {{ addButtonTitle }}
-      </button>
-    </div>
+    <UiTabs v-model="activeSection" :items="tabItems" />
 
-    <div class="finances-nav">
-      <button
-        v-for="section in sections"
-        :key="section.id"
-        @click="selectSection(section.id)"
-        :class="['nav-item', { selected: activeSection === section.id }]"
+    <UiCardList
+      :is-empty="activeCards.length === 0"
+      :empty-text="emptyText"
+      max-height="calc(100vh - 280px)"
+    >
+      <UiCardShell
+        v-for="card in activeCards"
+        :key="card.id"
+        :background-color="card.color"
+        class="finance-card"
       >
-        {{ section.title }} ({{ section.count }})
-      </button>
-    </div>
+        <div class="card-main">
+          <div class="card-title">{{ card.title }}</div>
+          <div class="card-subtitle">{{ card.subtitle }}</div>
+        </div>
 
-    <div class="finances-content">
-      <div v-if="activeSection === 'tariffs'" class="card-list">
-        <div
-          v-for="tariff in tariffs"
-          :key="tariff.id"
-          class="finance-card"
-          :style="{ backgroundColor: tariff.color }"
-        >
-          <div class="card-main">
-            <div class="card-title">{{ tariff.title }}</div>
-            <div class="card-subtitle">
-              {{ getFormatLabel(tariff.format) }}
-            </div>
-          </div>
-
-          <div class="card-meta">
-            <div>Длительность: {{ tariff.lessonDurationMinutes }} мин</div>
-            <div>Количество занятий: {{ tariff.lessonsCount }}</div>
-            <div>Стоимость: {{ tariff.price }} ₽</div>
+        <div class="card-meta">
+          <div v-for="metaItem in card.meta" :key="metaItem.label" class="meta-item">
+            <span class="meta-label">{{ metaItem.label }}</span>
+            <span class="meta-value">{{ metaItem.value }}</span>
           </div>
         </div>
-      </div>
-
-      <div v-else-if="activeSection === 'rates'" class="card-list">
-        <div
-          v-for="rate in teacherRateCards"
-          :key="rate.id"
-          class="finance-card"
-          :style="{ backgroundColor: rate.color }"
-        >
-          <div class="card-main">
-            <div class="card-title">{{ rate.teacherName }}</div>
-            <div class="card-subtitle">{{ rate.subject }}</div>
-          </div>
-
-          <div class="card-meta">
-            <div>Длительность: {{ rate.lessonDurationMinutes }} мин</div>
-            <div>Уровень: {{ getTeacherLevelLabel(rate.teacherLevel) }}</div>
-            <div>Ставка: {{ rate.rate }} ₽</div>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="card-list">
-        <div
-          v-for="salary in salaryCards"
-          :key="salary.id"
-          class="finance-card"
-          :style="{ backgroundColor: salary.color }"
-        >
-          <div class="card-main">
-            <div class="card-title">{{ salary.teacherName }}</div>
-            <div class="card-subtitle">
-              {{ salary.periodLabel }}
-            </div>
-          </div>
-
-          <div class="card-meta">
-            <div>Проведено занятий: {{ salary.lessonsCount }}</div>
-            <div>Оплачиваемых минут: {{ salary.totalMinutes }}</div>
-            <div>Сумма: {{ salary.totalAmount }} ₽</div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </UiCardShell>
+    </UiCardList>
   </PageLayout>
 </template>
 
@@ -93,6 +41,11 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import PageLayout from '@/components/PageLayout.vue'
+
+import UiPageHeader from '@/components/ui/UiPageHeader.vue'
+import UiTabs from '@/components/ui/UiTabs.vue'
+import UiCardList from '@/components/ui/UiCardList.vue'
+import UiCardShell from '@/components/ui/UiCardShell.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useFinancesStore } from '@/stores/finances'
@@ -126,12 +79,6 @@ const addButtonTitle = computed(() => {
   if (activeSection.value === 'rates') return 'Ставку'
   return ''
 })
-
-const sections = computed(() => [
-  { id: 'tariffs', title: 'Тарифы', count: tariffs.value.length },
-  { id: 'rates', title: 'Ставки', count: teacherRateCards.value.length },
-  { id: 'salaries', title: 'Зарплаты', count: salaryCards.value.length },
-])
 
 const teachersMap = computed(() => {
   return employers.value.reduce((acc, employer) => {
@@ -199,9 +146,65 @@ const salaryCards = computed(() => {
   })
 })
 
-function selectSection(sectionId) {
-  activeSection.value = sectionId
-}
+const tabItems = computed(() => [
+  { value: 'tariffs', label: 'Тарифы', count: tariffs.value.length },
+  { value: 'rates', label: 'Ставки', count: teacherRateCards.value.length },
+  { value: 'salaries', label: 'Зарплаты', count: salaryCards.value.length },
+])
+
+const tariffDisplayCards = computed(() => {
+  return tariffs.value.map((tariff) => ({
+    id: tariff.id,
+    color: tariff.color,
+    title: tariff.title,
+    subtitle: getFormatLabel(tariff.format),
+    meta: [
+      { label: 'Длительность', value: `${tariff.lessonDurationMinutes} мин` },
+      { label: 'Количество занятий', value: tariff.lessonsCount },
+      { label: 'Стоимость', value: `${tariff.price} ₽` },
+    ],
+  }))
+})
+
+const rateDisplayCards = computed(() => {
+  return teacherRateCards.value.map((rate) => ({
+    id: rate.id,
+    color: rate.color,
+    title: rate.teacherName,
+    subtitle: rate.subject,
+    meta: [
+      { label: 'Длительность', value: `${rate.lessonDurationMinutes} мин` },
+      { label: 'Уровень', value: getTeacherLevelLabel(rate.teacherLevel) },
+      { label: 'Ставка', value: `${rate.rate} ₽` },
+    ],
+  }))
+})
+
+const salaryDisplayCards = computed(() => {
+  return salaryCards.value.map((salary) => ({
+    id: salary.id,
+    color: salary.color,
+    title: salary.teacherName,
+    subtitle: salary.periodLabel,
+    meta: [
+      { label: 'Проведено занятий', value: salary.lessonsCount },
+      { label: 'Оплачиваемых минут', value: salary.totalMinutes },
+      { label: 'Сумма', value: `${salary.totalAmount} ₽` },
+    ],
+  }))
+})
+
+const activeCards = computed(() => {
+  if (activeSection.value === 'tariffs') return tariffDisplayCards.value
+  if (activeSection.value === 'rates') return rateDisplayCards.value
+  return salaryDisplayCards.value
+})
+
+const emptyText = computed(() => {
+  if (activeSection.value === 'tariffs') return 'Тарифов пока нет'
+  if (activeSection.value === 'rates') return 'Ставок пока нет'
+  return 'Зарплатных периодов пока нет'
+})
 
 function openCreateModal() {
   if (activeSection.value === 'tariffs') {
@@ -245,100 +248,56 @@ function formatDate(value) {
 </script>
 
 <style scoped>
-.finances-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #6e6565;
-  padding-bottom: 12px;
-  margin-bottom: 20px;
-}
-
-.finances-top button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #b49db4;
-  border-radius: 28px;
-  padding: 8px 24px;
-  font-size: 1.1rem;
-  transition: background-color 0.2s;
-}
-
-.finances-top button:hover {
-  background-color: #9c869c;
-}
-
-.plus-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.finances-nav {
-  display: flex;
-  gap: 24px;
-  border-bottom: 1px solid #6e6565;
-  margin-bottom: 20px;
-}
-
-.nav-item {
-  padding: 12px 0;
-  font-size: 1.1rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.nav-item.selected {
-  color: #802e87;
-  border-bottom: 3px solid #802e87;
-  font-weight: 600;
-}
-
-.finances-content {
-  margin-top: 20px;
-}
-
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
 .finance-card {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
+  align-items: center;
   gap: 24px;
-  padding: 20px 24px;
-  border-radius: 20px;
+  min-height: 116px;
 }
 
 .card-main {
-  flex: 1;
   min-width: 0;
-}
-
-.card-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.card-subtitle {
-  font-size: 0.95rem;
-  color: #5f5560;
-}
-
-.card-meta {
-  min-width: 260px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 0.95rem;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.card-subtitle {
+  font-size: 14px;
   font-weight: 600;
+  color: var(--color-text-muted);
+  word-break: break-word;
+}
+
+.card-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.meta-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
 }
 </style>

@@ -1,15 +1,13 @@
 <template>
   <PageLayout>
-    <div class="clients-top">
-      <h1>Наши клиенты</h1>
+    <UiPageHeader
+      title="Наши клиенты"
+      :action-visible="canManageClients"
+      action-label="Клиент"
+      @action="openModalCreateClient"
+    />
 
-      <button v-if="canManageClients" @click="openModalCreateClient">
-        <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
-        Клиент
-      </button>
-    </div>
-
-    <div class="search-container">
+    <div class="toolbar">
       <div class="search-input-wrapper">
         <input
           v-model="searchQuery"
@@ -17,47 +15,63 @@
           placeholder="Укажите ФИО клиента"
           class="search-input"
         />
-        <img src="@/assets/search.svg" class="search-icon" />
+        <img src="@/assets/search.svg" alt="search" class="search-icon" />
       </div>
 
-      <button class="filterButton" @click="toggleBalanceSort">Фильтр по балансу</button>
+      <button class="filter-btn" :class="{ active: isSortedByBalance }" @click="toggleBalanceSort">
+        Фильтр по балансу
+      </button>
     </div>
 
-    <div class="clients-section">
-      <div v-if="filteredClients.length" class="client-list-container">
-        <div
-          v-for="client in filteredClients"
-          :key="client.id"
-          class="client-card"
-          :style="{ backgroundColor: client.color }"
-        >
-          <div class="card-info">
-            <div class="info-top">
-              <p class="fio">
-                {{ getClientFullName(client) }}
-              </p>
-              <span>(UTC{{ client.timezone }})</span>
-            </div>
-
-            <div class="info-buttom">{{ client.phone }} {{ client.email }}</div>
+    <UiCardList
+      :is-empty="filteredClients.length === 0"
+      empty-text="Нет клиентов"
+      max-height="calc(100vh - 320px)"
+    >
+      <UiCardShell
+        v-for="client in filteredClients"
+        :key="client.id"
+        :background-color="client.color"
+        class="client-card"
+      >
+        <div class="client-main">
+          <div class="client-head">
+            <p class="client-name">
+              {{ getClientFullName(client) }}
+            </p>
+            <span class="client-timezone">UTC{{ client.timezone }}</span>
           </div>
 
-          <div class="card-client-info">
-            <div>Класс: {{ client.grade }}</div>
-            <div>Баланс: {{ client.balance }}</div>
-            <div>Статус: {{ statusLabels[client.status] || client.status }}</div>
-          </div>
-
-          <div class="card-action">
-            <button v-if="canManageClients" @click="openModalEditClient(client)">
-              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-            </button>
+          <div class="client-contacts">
+            <span>{{ client.phone || 'Телефон не указан' }}</span>
+            <span>{{ client.email || 'Email не указан' }}</span>
           </div>
         </div>
-      </div>
 
-      <div v-else class="no-clients">Нет клиентов</div>
-    </div>
+        <div class="client-meta">
+          <div class="meta-item">
+            <span class="meta-label">Класс</span>
+            <span class="meta-value">{{ client.grade }}</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Баланс</span>
+            <span class="meta-value">{{ client.balance }}</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Статус</span>
+            <span class="meta-value">{{ statusLabels[client.status] || client.status }}</span>
+          </div>
+        </div>
+
+        <div v-if="canManageClients" class="client-actions">
+          <button class="icon-btn" @click="openModalEditClient(client)">
+            <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+          </button>
+        </div>
+      </UiCardShell>
+    </UiCardList>
 
     <ModalCreateClient
       :IsOpenModalCreateClient="isOpenModalCreateClient"
@@ -81,6 +95,10 @@ import { storeToRefs } from 'pinia'
 import PageLayout from '@/components/PageLayout.vue'
 import ModalCreateClient from '@/components/ModalCreateClient.vue'
 import ModalEditClient from '@/components/ModalEditClient.vue'
+
+import UiPageHeader from '@/components/ui/UiPageHeader.vue'
+import UiCardList from '@/components/ui/UiCardList.vue'
+import UiCardShell from '@/components/ui/UiCardShell.vue'
 
 import { useClientsStore } from '@/stores/clients'
 import { useAuthStore } from '@/stores/auth'
@@ -124,7 +142,7 @@ const filteredClients = computed(() => {
 })
 
 function getClientFullName(client) {
-  return `${client.surname} ${client.name} ${client.patronymic}`.trim()
+  return [client.surname, client.name, client.patronymic].filter(Boolean).join(' ')
 }
 
 function openModalCreateClient() {
@@ -161,151 +179,185 @@ function toggleBalanceSort() {
 </script>
 
 <style scoped>
-.clients-top {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #6e6565;
-  padding-bottom: 8px;
-}
-
-.clients-top button {
-  background-color: #b49db4;
-  border-radius: 56px;
-  padding: 8px 24px;
-  font-size: 24px;
-  align-items: center;
-  gap: 8px;
-}
-
-.plus-icon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  padding-top: 4px;
-}
-
-.clients-section {
-  margin-top: 16px;
-}
-
-.client-card {
-  height: 130px;
-  gap: 8px;
-  display: flex;
-  padding: 16px 32px;
-  border-radius: 30px;
-  flex-shrink: 0;
-}
-
-.client-list-container {
-  padding-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-.card-info {
-  width: 50%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.info-top {
-  font-weight: 600;
-  font-size: 26px;
-  display: flex;
-  gap: 8px;
-}
-
-.fio {
-  max-width: 400px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.info-buttom {
-  font-weight: 450;
-  font-size: 24px;
-}
-
-.card-client-info {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 600;
-  width: 100%;
-  margin-left: 160px;
-}
-
-.card-action {
+.toolbar {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-right: 20px;
-}
-
-.edit-icon {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.no-clients {
-  text-align: center;
-  padding: 20px;
-  font-size: 18px;
-  color: #888;
-}
-
-.search-container {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin: 16px 0;
-  border-bottom: 1px solid #6e6565;
-  padding-bottom: 8px;
-  position: relative;
+  gap: 16px;
 }
 
 .search-input-wrapper {
-  display: flex;
-  align-items: center;
-  border-radius: 17px;
-  padding: 5px;
+  position: relative;
+  width: 100%;
+  max-width: 480px;
 }
 
 .search-input {
-  font-size: 24px;
-  border: 1px solid #802e87;
-  border-radius: 16px;
-  outline: none;
-  width: 480px;
-  background-color: transparent;
-  padding: 10px 50px 10px 15px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 44px 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.08);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .search-icon {
-  width: 26px;
-  height: 26px;
   position: absolute;
-  left: 440px;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.65;
+  pointer-events: none;
 }
 
-.filterButton {
-  background-color: #b49db4;
-  border-radius: 56px;
-  padding: 8px 24px;
-  font-size: 24px;
+.filter-btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.filter-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.filter-btn.active {
+  background-color: var(--color-primary-soft);
+  border-color: rgba(128, 46, 135, 0.18);
+  color: var(--color-primary);
+}
+
+.client-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.9fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
+  min-height: 116px;
+}
+
+.client-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.client-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.client-name {
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.client-timezone {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.client-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.client-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.meta-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.client-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.45);
+  transition:
+    background-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.edit-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 </style>
