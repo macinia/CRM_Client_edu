@@ -1,266 +1,251 @@
 <template>
   <PageLayout>
-    <div class="company-top">
-      <h1>Сотрудники</h1>
-      <button
-        @click="openModalCreateEmployer()"
-        v-if="authStore.user.role == 'admin' && authStore.user.role == 'manager'"
+    <UiPageHeader
+      title="Сотрудники"
+      :action-visible="canCreateEmployer"
+      action-label="Сотрудник"
+      @action="openModalCreateEmployer"
+    />
+
+    <UiTabs v-model="selectedRole" :items="tabItems" />
+
+    <UiCardList
+      :is-empty="selectedUsers.length === 0"
+      empty-text="Сотрудников в этом разделе пока нет"
+      max-height="calc(100vh - 280px)"
+    >
+      <UiCardShell
+        v-for="user in selectedUsers"
+        :key="user.id"
+        :background-color="user.color"
+        class="employee-card"
       >
-        <img src="@/assets/pluse.svg" alt="Добавить" class="plus-icon" />
-        Сотрудник
-      </button>
-    </div>
-    <div class="copmany-employes">
-      <div class="copmany-employes-nav">
-        <button
-          v-for="role in sections"
-          :key="role.label"
-          @click="
-            () => {
-              sections.forEach((section) => (section.isChoosen = false))
-              selectRole(role.array)
-              role.isChoosen = true
-            }
-          "
-          :class="['nav-item', role.isChoosen ? 'selected' : ' ']"
-        >
-          {{ role.label }} ({{ role.array.length }})
-        </button>
-      </div>
-      <div class="user-list-container">
-        <div
-          v-for="user in selectedUsers"
-          :key="user.id"
-          :style="{ backgroundColor: user.hex }"
-          class="user-card"
-        >
-          <div class="card-info">
-            <div class="info-top">
-              <p class="fio">{{ user.surname }} {{ user.name }} {{ user.patronymic }}</p>
-              (UTC{{ user.timezone }})
-            </div>
-            <div class="info-buttom">{{ user.phone }} {{ user.email }}</div>
+        <div class="employee-main">
+          <div class="employee-head">
+            <p class="employee-name">
+              {{ getFullName(user) }}
+            </p>
+            <span class="employee-timezone">UTC{{ user.timezone }}</span>
           </div>
-          <div class="card-role">
-            {{ user.role }}
-          </div>
-          <div class="card-action">
-            <button v-if="authStore.user.role == 'admin'">
-              <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
-            </button>
+
+          <div class="employee-contacts">
+            <span>{{ user.phone || 'Телефон не указан' }}</span>
+            <span>{{ user.email || 'Email не указан' }}</span>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div class="employee-role">
+          {{ getRoleLabel(user.role) }}
+        </div>
+
+        <div v-if="canEditEmployer" class="employee-actions">
+          <button class="icon-btn" @click="openModalEditEmployer(user)">
+            <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+          </button>
+        </div>
+      </UiCardShell>
+    </UiCardList>
+
     <ModalCreateEmployer
       :IsOpenModalCreateEmployer="isOpenModalCreateEmployer"
       @closeModalCreateEmployer="closeModalCreateEmployer"
+    />
+
+    <ModalEditEmployer
+      :isOpenModalEditEmployer="isOpenModalEditEmployer"
+      :employerData="editEmployer"
+      @closeModalEditEmployer="closeModalEditEmployer"
+      @saveEmployer="saveEmployer"
     />
   </PageLayout>
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import PageLayout from '@/components/PageLayout.vue'
-import { onMounted, ref, watch } from 'vue'
-import { useEmployersStore } from '@/stores/employers'
 import ModalCreateEmployer from '@/components/ModalCreateEmployer.vue'
+import ModalEditEmployer from '@/components/ModalEditEmployer.vue'
+
+import UiPageHeader from '@/components/ui/UiPageHeader.vue'
+import UiTabs from '@/components/ui/UiTabs.vue'
+import UiCardList from '@/components/ui/UiCardList.vue'
+import UiCardShell from '@/components/ui/UiCardShell.vue'
+
+import { useEmployersStore } from '@/stores/employers'
 import { useAuthStore } from '@/stores/auth'
 
-const isOpenModalCreateEmployer = ref(false)
-
 const authStore = useAuthStore()
-const EmployersStore = useEmployersStore()
+const employersStore = useEmployersStore()
+const { employers } = storeToRefs(employersStore)
 
-const closeModalCreateEmployer = () => {
-  isOpenModalCreateEmployer.value = false
+const isOpenModalCreateEmployer = ref(false)
+const isOpenModalEditEmployer = ref(false)
+const editEmployer = ref(null)
+const selectedRole = ref('admin')
+
+const canCreateEmployer = computed(() => {
+  return authStore.user?.role === 'admin' || authStore.user?.role === 'manager'
+})
+
+const canEditEmployer = computed(() => {
+  return authStore.user?.role === 'admin'
+})
+
+const sections = computed(() => [
+  {
+    role: 'admin',
+    label: 'Администраторы',
+    items: employers.value.filter((item) => item.role === 'admin'),
+  },
+  {
+    role: 'manager',
+    label: 'Менеджеры',
+    items: employers.value.filter((item) => item.role === 'manager'),
+  },
+  {
+    role: 'teacher',
+    label: 'Преподаватели',
+    items: employers.value.filter((item) => item.role === 'teacher'),
+  },
+])
+
+const tabItems = computed(() => {
+  return sections.value.map((section) => ({
+    value: section.role,
+    label: section.label,
+    count: section.items.length,
+  }))
+})
+
+const selectedUsers = computed(() => {
+  const currentSection = sections.value.find((section) => section.role === selectedRole.value)
+  return currentSection ? currentSection.items : []
+})
+
+const getFullName = (user) => {
+  return [user.surname, user.name, user.patronymic].filter(Boolean).join(' ')
+}
+
+const getRoleLabel = (role) => {
+  if (role === 'admin') return 'Администратор'
+  if (role === 'manager') return 'Менеджер'
+  if (role === 'teacher') return 'Преподаватель'
+  return role
 }
 
 const openModalCreateEmployer = () => {
   isOpenModalCreateEmployer.value = true
 }
 
-const users = ref({
-  teacher: [],
-  manager: [],
-  superusers: [],
-})
-
-const sections = ref([
-  {
-    label: 'Администратор',
-    array: users.value.superusers,
-    role: 'SUPERUSER',
-    isChoosen: true,
-  },
-  {
-    label: 'Менеджер',
-    array: users.value.manager,
-    isChoosen: false,
-    role: 'MANAGER',
-  },
-  {
-    label: 'Преподаватель',
-    array: users.value.teacher,
-    isChoosen: false,
-    role: 'TEACHER',
-  },
-])
-
-const selectedUsers = ref([])
-
-const selectRole = (array) => {
-  sections.value.forEach((el) => {
-    el.isChoosen = array === el.role
-  })
-  selectedUsers.value = array
-}
-const getUsers = (data) => {
-  let currentUsers = {
-    teacher: [],
-    manager: [],
-    superusers: [],
-  }
-  data.forEach(({ user }) => {
-    if (user.role === 'Администратор') {
-      currentUsers.superusers.push(user)
-    } else if (user.role === 'Преподаватель') {
-      currentUsers.teacher.push(user)
-    } else if (user.role === 'Менеджер') {
-      currentUsers.manager.push(user)
-    }
-  })
-  sections.value[0].array = currentUsers.superusers
-  sections.value[1].array = currentUsers.manager
-  sections.value[2].array = currentUsers.teacher
-  users.value = currentUsers
+const closeModalCreateEmployer = () => {
+  isOpenModalCreateEmployer.value = false
 }
 
-watch(() => {
-  getUsers(EmployersStore.employers)
-})
+const openModalEditEmployer = (employer) => {
+  editEmployer.value = { ...employer }
+  isOpenModalEditEmployer.value = true
+}
 
-onMounted(async () => {
-  getUsers(EmployersStore.employers)
-  selectedUsers.value = sections.value[0].array
-})
+const closeModalEditEmployer = () => {
+  isOpenModalEditEmployer.value = false
+  editEmployer.value = null
+}
+
+const saveEmployer = (updatedEmployer) => {
+  employersStore.updateEmployer(updatedEmployer)
+  closeModalEditEmployer()
+}
 </script>
 
 <style scoped>
-.company-top {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #6e6565;
-  padding-bottom: 8px;
-}
-.company-top button {
-  background-color: #b49db4;
-  border-radius: 56px;
-  padding: 8px 24px;
-  font-size: 24px;
+.employee-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(180px, 0.8fr) auto;
   align-items: center;
-  gap: 8px;
-}
-.copmany-employes {
-  margin-top: 16px;
-}
-.copmany-employes-nav {
-  display: flex;
-  border-bottom: 1px solid #6e6565;
-  gap: 36px;
-}
-.nav-item {
-  padding: 8px;
-  font-size: 24px;
-}
-.selected {
-  font-weight: 600;
-  color: #802e87;
-  border-bottom: 3px solid #802e87;
-}
-.plus-icon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  padding-top: 4px;
-}
-.user-list {
-  margin-top: 24px;
-  height: 131px;
-  border-radius: 30px;
-  padding: 17px 35px 27px;
-}
-.user-list-container {
-  padding-top: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  max-height: 450px;
-  overflow-y: auto;
-}
-.user-card {
-  height: 130px;
-  gap: 8px;
-  display: flex;
-  padding: 16px 32px;
-  border-radius: 30px;
-  flex-shrink: 0;
-}
-.card-info {
-  width: 50%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  gap: 20px;
+  min-height: 116px;
 }
 
-.info-top {
-  font-weight: 600;
-  font-size: 26px;
+.employee-main {
+  min-width: 0;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 14px;
 }
-.fio {
-  max-width: 400px;
-  text-overflow: ellipsis;
+
+.employee-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.employee-name {
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
-}
-.info-buttom {
-  font-weight: 450;
-  font-size: 24px;
-}
-.card-role {
-  flex-grow: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 600;
-}
-.card-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 20px;
+  text-overflow: ellipsis;
 }
 
-.user-role {
-  display: flex;
-  justify-content: flex-end;
-  margin-left: 360px;
-  align-content: center;
-}
-.role-container {
-  display: flex;
-  align-items: center;
-  font-size: 27px;
-  font-weight: 600;
-  gap: 120px;
-}
-.edit-icon {
-  width: 46px;
-  height: 46px;
+.employee-timezone {
   flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.employee-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.employee-role {
+  justify-self: center;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.employee-actions {
+  display: flex;
   align-items: center;
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.45);
+  transition:
+    background-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.edit-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 </style>

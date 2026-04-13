@@ -1,7 +1,7 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalCreateClient" @close="handleClose">
+  <ModalLayout :IsOpen="IsOpenModalEditClient" @close="handleClose">
     <template #header>
-      <span>Новый клиент</span>
+      <span>Редактирование клиента</span>
     </template>
 
     <UiFormBuilder
@@ -9,28 +9,30 @@
       :fields="fields"
       :errors="errors"
       :form-error="formError"
-      submit-label="Создать клиента"
+      submit-label="Сохранить изменения"
       :columns="2"
-      @submit="createClient"
+      @submit="updateClient"
     />
   </ModalLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import ModalLayout from './ModalLayout.vue'
 import UiFormBuilder from '@/components/ui/UiFormBuilder.vue'
-import { useClientsStore } from '@/stores/clients'
 
-defineProps({
-  IsOpenModalCreateClient: {
+const props = defineProps({
+  IsOpenModalEditClient: {
     type: Boolean,
     required: true,
   },
+  clientData: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
-const emit = defineEmits(['closeModalCreateClient'])
-const clientsStore = useClientsStore()
+const emit = defineEmits(['closeModalEditClient', 'saveClient'])
 
 const fields = [
   {
@@ -114,6 +116,7 @@ const fields = [
 ]
 
 const createInitialForm = () => ({
+  id: null,
   surname: '',
   name: '',
   patronymic: '',
@@ -132,15 +135,44 @@ const form = ref(createInitialForm())
 const errors = ref({})
 const formError = ref('')
 
-function resetForm() {
-  form.value = createInitialForm()
+watch(
+  () => props.clientData,
+  (value) => {
+    errors.value = {}
+    formError.value = ''
+
+    if (!value || !Object.keys(value).length) {
+      form.value = createInitialForm()
+      return
+    }
+
+    form.value = {
+      id: value.id ?? null,
+      surname: value.surname ?? '',
+      name: value.name ?? '',
+      patronymic: value.patronymic ?? '',
+      email: value.email ?? '',
+      phone: value.phone ?? '',
+      timezone: value.timezone ?? '+3',
+      color: value.color ?? '#E1DEF7',
+      birthDate: value.birthDate ?? '',
+      grade: value.grade ?? '',
+      balance: value.balance ?? '',
+      status: value.status ?? 'active',
+      organizationId: value.organizationId ?? 0,
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+function resetErrors() {
   errors.value = {}
   formError.value = ''
 }
 
 function handleClose() {
-  resetForm()
-  emit('closeModalCreateClient')
+  resetErrors()
+  emit('closeModalEditClient')
 }
 
 function validateForm() {
@@ -180,18 +212,16 @@ function validateForm() {
   return Object.keys(errors.value).length === 0
 }
 
-function createClient() {
+function updateClient() {
   if (!validateForm()) {
     formError.value = 'Проверьте заполнение полей формы'
     return
   }
 
-  clientsStore.createClient({
+  emit('saveClient', {
     ...form.value,
     grade: form.value.grade === '' ? null : Number(form.value.grade),
     balance: form.value.balance === '' ? 0 : Number(form.value.balance),
   })
-
-  handleClose()
 }
 </script>
