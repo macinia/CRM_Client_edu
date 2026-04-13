@@ -20,6 +20,15 @@ function getLessonDurationMinutes(startAt, endAt) {
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60))
 }
 
+function isIntervalsIntersect(startA, endA, startB, endB) {
+  const aStart = new Date(startA).getTime()
+  const aEnd = new Date(endA).getTime()
+  const bStart = new Date(startB).getTime()
+  const bEnd = new Date(endB).getTime()
+
+  return aStart < bEnd && aEnd > bStart
+}
+
 function generateLessonsFromSeries(seriesList) {
   const lessons = []
   let nextLessonId = 1
@@ -45,6 +54,9 @@ function generateLessonsFromSeries(seriesList) {
           startAt: `${dateKey}T${rule.startTime}:00`,
           endAt: `${dateKey}T${rule.endTime}:00`,
           status: 'scheduled',
+          attendanceStatus: 'not_selected',
+          meetingLink: '',
+          comment: '',
           organizationId: series.organizationId,
           createdAt: series.createdAt,
           updatedAt: series.updatedAt,
@@ -77,7 +89,7 @@ const initialLessonSeries = [
   },
   {
     id: 2,
-    teacherId: 2,
+    teacherId: 5,
     clientId: 2,
     subject: 'Физика',
     startDate: '2026-04-07',
@@ -104,6 +116,65 @@ const initialLessonSeries = [
     createdAt: '2026-04-01T12:00:00.000Z',
     updatedAt: '2026-04-01T12:00:00.000Z',
   },
+  {
+    id: 4,
+    teacherId: 5,
+    clientId: 1,
+    subject: 'Математика',
+    startDate: '2026-04-08',
+    endDate: '2026-05-31',
+    schedule: [{ weekday: 4, startTime: '10:00', endTime: '11:00' }],
+    status: 'active',
+    organizationId: 0,
+    createdAt: '2026-04-01T12:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+  },
+  {
+    id: 5,
+    teacherId: 6,
+    clientId: 2,
+    subject: 'Русский язык',
+    startDate: '2026-04-09',
+    endDate: '2026-05-31',
+    schedule: [{ weekday: 4, startTime: '17:00', endTime: '18:00' }],
+    status: 'active',
+    organizationId: 0,
+    createdAt: '2026-04-01T12:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+  },
+]
+
+const initialOffHours = [
+  {
+    id: 1,
+    teacherId: 2,
+    startAt: '2026-04-15T12:00:00',
+    endAt: '2026-04-15T15:00:00',
+    reason: 'Личное время',
+    organizationId: 0,
+    createdAt: '2026-04-01T12:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+  },
+  {
+    id: 2,
+    teacherId: 5,
+    startAt: '2026-04-17T09:00:00',
+    endAt: '2026-04-17T12:00:00',
+    reason: 'Методический день',
+    organizationId: 0,
+    createdAt: '2026-04-01T12:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+  },
+  {
+    id: 3,
+    teacherId: 6,
+    startAt: '2026-04-16T13:00:00',
+    endAt: '2026-04-16T16:00:00',
+    reason: 'Отсутствие',
+    organizationId: 0,
+    createdAt: '2026-04-01T12:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+  },
 ]
 
 const initialLessons = generateLessonsFromSeries(initialLessonSeries)
@@ -112,6 +183,7 @@ export const useLessonsStore = defineStore('lessons', {
   state: () => ({
     lessonSeries: initialLessonSeries,
     lessons: initialLessons,
+    offHours: initialOffHours,
   }),
 
   getters: {
@@ -120,15 +192,38 @@ export const useLessonsStore = defineStore('lessons', {
     },
 
     getLessonsByTeacherId: (state) => (teacherId) => {
-      return state.lessons.filter((lesson) => lesson.teacherId === teacherId)
+      return state.lessons.filter((lesson) => Number(lesson.teacherId) === Number(teacherId))
     },
 
     getLessonsByClientId: (state) => (clientId) => {
-      return state.lessons.filter((lesson) => lesson.clientId === clientId)
+      return state.lessons.filter((lesson) => Number(lesson.clientId) === Number(clientId))
     },
 
     getSeriesByTeacherId: (state) => (teacherId) => {
-      return state.lessonSeries.filter((series) => series.teacherId === teacherId)
+      return state.lessonSeries.filter((series) => Number(series.teacherId) === Number(teacherId))
+    },
+
+    getOffHoursByTeacherId: (state) => (teacherId) => {
+      return state.offHours.filter((item) => Number(item.teacherId) === Number(teacherId))
+    },
+
+    getLessonsByTeacherInRange: (state) => (teacherId, startAt, endAt) => {
+      return state.lessons.filter((lesson) => {
+        return (
+          Number(lesson.teacherId) === Number(teacherId) &&
+          lesson.status !== 'cancelled' &&
+          isIntervalsIntersect(lesson.startAt, lesson.endAt, startAt, endAt)
+        )
+      })
+    },
+
+    getOffHoursByTeacherInRange: (state) => (teacherId, startAt, endAt) => {
+      return state.offHours.filter((item) => {
+        return (
+          Number(item.teacherId) === Number(teacherId) &&
+          isIntervalsIntersect(item.startAt, item.endAt, startAt, endAt)
+        )
+      })
     },
   },
 
@@ -145,6 +240,9 @@ export const useLessonsStore = defineStore('lessons', {
         ...lesson,
         id: this.getNextId(this.lessons),
         status: lesson.status || 'scheduled',
+        attendanceStatus: lesson.attendanceStatus || 'not_selected',
+        meetingLink: lesson.meetingLink || '',
+        comment: lesson.comment || '',
         createdAt: now,
         updatedAt: now,
       }
@@ -193,6 +291,9 @@ export const useLessonsStore = defineStore('lessons', {
             startAt: `${dateKey}T${rule.startTime}:00`,
             endAt: `${dateKey}T${rule.endTime}:00`,
             status: 'scheduled',
+            attendanceStatus: 'not_selected',
+            meetingLink: '',
+            comment: '',
             organizationId: newSeries.organizationId ?? 0,
           })
 
@@ -227,6 +328,38 @@ export const useLessonsStore = defineStore('lessons', {
     deleteLessonSeries(seriesId) {
       this.lessonSeries = this.lessonSeries.filter((series) => series.id !== seriesId)
       this.lessons = this.lessons.filter((lesson) => lesson.seriesId !== seriesId)
+    },
+
+    createOffHours(offHours) {
+      const now = new Date().toISOString()
+
+      const newOffHours = {
+        ...offHours,
+        id: this.getNextId(this.offHours),
+        teacherId: Number(offHours.teacherId),
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      this.offHours.push(newOffHours)
+      return newOffHours
+    },
+
+    updateOffHours(updatedOffHours) {
+      const index = this.offHours.findIndex((item) => item.id === updatedOffHours.id)
+
+      if (index === -1) return
+
+      this.offHours[index] = {
+        ...this.offHours[index],
+        ...updatedOffHours,
+        teacherId: Number(updatedOffHours.teacherId),
+        updatedAt: new Date().toISOString(),
+      }
+    },
+
+    deleteOffHours(id) {
+      this.offHours = this.offHours.filter((item) => item.id !== id)
     },
 
     getLessonDurationMinutes,
