@@ -41,46 +41,47 @@ export const useFinancesStore = defineStore('finances', {
     teacherRates: [
       {
         id: 1,
-        teacherId: 2,
-        subject: 'Математика',
+        subjectId: 1,
         lessonDurationMinutes: 60,
         teacherLevel: 'junior',
         rate: 500,
         color: '#DFF3E2',
+        organizationId: 0,
         createdAt: '2026-04-01T12:00:00.000Z',
         updatedAt: '2026-04-01T12:00:00.000Z',
       },
       {
         id: 2,
-        teacherId: 2,
-        subject: 'Физика',
+        subjectId: 2,
         lessonDurationMinutes: 120,
         teacherLevel: 'middle',
         rate: 900,
         color: '#DFF3E2',
+        organizationId: 0,
         createdAt: '2026-04-01T12:00:00.000Z',
         updatedAt: '2026-04-01T12:00:00.000Z',
       },
       {
         id: 3,
-        teacherId: 2,
-        subject: 'Алгебра',
+        subjectId: 3,
         lessonDurationMinutes: 45,
         teacherLevel: 'middle',
         rate: 350,
         color: '#DFF3E2',
+        organizationId: 0,
         createdAt: '2026-04-01T12:00:00.000Z',
         updatedAt: '2026-04-01T12:00:00.000Z',
       },
     ],
 
-    salaryPeriods: [
+    salaryRecords: [
       {
         id: 1,
         teacherId: 2,
-        periodStart: '2026-04-01',
-        periodEnd: '2026-04-30',
+        lastPaymentDate: '2026-04-01',
+        lastPaymentAmount: 12000,
         color: '#E8E3FA',
+        organizationId: 0,
         createdAt: '2026-04-01T12:00:00.000Z',
         updatedAt: '2026-04-01T12:00:00.000Z',
       },
@@ -93,9 +94,6 @@ export const useFinancesStore = defineStore('finances', {
         id: tariff.id,
         label: tariff.title,
       })),
-
-    teacherRatesByTeacherId: (state) => (teacherId) =>
-      state.teacherRates.filter((rate) => rate.teacherId === teacherId),
   },
 
   actions: {
@@ -148,10 +146,11 @@ export const useFinancesStore = defineStore('finances', {
       this.teacherRates.push({
         ...rate,
         id: this.getNextId(this.teacherRates),
-        teacherId: Number(rate.teacherId),
+        subjectId: Number(rate.subjectId),
         lessonDurationMinutes: Number(rate.lessonDurationMinutes) || 0,
         rate: Number(rate.rate) || 0,
         color: rate.color || '#DFF3E2',
+        organizationId: Number(rate.organizationId) || 0,
         createdAt: now,
         updatedAt: now,
       })
@@ -165,12 +164,14 @@ export const useFinancesStore = defineStore('finances', {
       this.teacherRates[index] = {
         ...this.teacherRates[index],
         ...updatedRate,
-        teacherId: Number(updatedRate.teacherId ?? this.teacherRates[index].teacherId),
+        subjectId: Number(updatedRate.subjectId ?? this.teacherRates[index].subjectId),
         lessonDurationMinutes:
           Number(
             updatedRate.lessonDurationMinutes ?? this.teacherRates[index].lessonDurationMinutes,
           ) || 0,
         rate: Number(updatedRate.rate ?? this.teacherRates[index].rate) || 0,
+        organizationId:
+          Number(updatedRate.organizationId ?? this.teacherRates[index].organizationId) || 0,
         updatedAt: new Date().toISOString(),
       }
     },
@@ -179,34 +180,36 @@ export const useFinancesStore = defineStore('finances', {
       this.teacherRates = this.teacherRates.filter((item) => item.id !== id)
     },
 
-    createSalaryPeriod(period) {
+    upsertSalaryRecord(payload) {
       const now = new Date().toISOString()
 
-      this.salaryPeriods.push({
-        ...period,
-        id: this.getNextId(this.salaryPeriods),
-        teacherId: Number(period.teacherId),
-        color: period.color || '#E8E3FA',
-        createdAt: now,
-        updatedAt: now,
-      })
-    },
-
-    updateSalaryPeriod(updatedPeriod) {
-      const index = this.salaryPeriods.findIndex((item) => item.id === updatedPeriod.id)
-
-      if (index === -1) return
-
-      this.salaryPeriods[index] = {
-        ...this.salaryPeriods[index],
-        ...updatedPeriod,
-        teacherId: Number(updatedPeriod.teacherId ?? this.salaryPeriods[index].teacherId),
-        updatedAt: new Date().toISOString(),
+      const normalizedRecord = {
+        teacherId: Number(payload.teacherId),
+        lastPaymentDate: payload.lastPaymentDate,
+        lastPaymentAmount: Number(payload.lastPaymentAmount) || 0,
+        color: payload.color || '#E8E3FA',
+        organizationId: Number(payload.organizationId) || 0,
       }
-    },
 
-    deleteSalaryPeriod(id) {
-      this.salaryPeriods = this.salaryPeriods.filter((item) => item.id !== id)
+      const index = this.salaryRecords.findIndex(
+        (item) => item.teacherId === normalizedRecord.teacherId,
+      )
+
+      if (index === -1) {
+        this.salaryRecords.push({
+          id: this.getNextId(this.salaryRecords),
+          ...normalizedRecord,
+          createdAt: now,
+          updatedAt: now,
+        })
+        return
+      }
+
+      this.salaryRecords[index] = {
+        ...this.salaryRecords[index],
+        ...normalizedRecord,
+        updatedAt: now,
+      }
     },
   },
 })

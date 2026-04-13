@@ -31,8 +31,45 @@
             <span class="meta-value">{{ metaItem.value }}</span>
           </div>
         </div>
+
+        <div v-if="canShowEditButton(card)" class="card-actions">
+          <button class="icon-btn" @click="handleEditCard(card)">
+            <img src="@/assets/edit.svg" alt="edit" class="edit-icon" />
+          </button>
+        </div>
       </UiCardShell>
     </UiCardList>
+
+    <ModalCreateTeacherRate
+      :isOpenModalCreateTeacherRate="isCreateTeacherRateModalOpen"
+      @closeModalCreateTeacherRate="closeCreateTeacherRateModal"
+    />
+
+    <ModalEditTeacherRate
+      :isOpenModalEditTeacherRate="isEditTeacherRateModalOpen"
+      :teacherRateData="selectedTeacherRate"
+      @closeModalEditTeacherRate="closeEditTeacherRateModal"
+      @saveTeacherRate="saveTeacherRate"
+    />
+
+    <ModalCreateTariff
+      :isOpenModalCreateTariff="isCreateTariffModalOpen"
+      @closeModalCreateTariff="closeCreateTariffModal"
+    />
+
+    <ModalEditTariff
+      :isOpenModalEditTariff="isEditTariffModalOpen"
+      :tariffData="selectedTariff"
+      @closeModalEditTariff="closeEditTariffModal"
+      @saveTariff="saveTariff"
+    />
+
+    <ModalEditSalary
+      :isOpenModalEditSalary="isEditSalaryModalOpen"
+      :salaryData="selectedSalary"
+      @closeModalEditSalary="closeEditSalaryModal"
+      @saveSalaryRecord="saveSalaryRecord"
+    />
   </PageLayout>
 </template>
 
@@ -47,31 +84,49 @@ import UiTabs from '@/components/ui/UiTabs.vue'
 import UiCardList from '@/components/ui/UiCardList.vue'
 import UiCardShell from '@/components/ui/UiCardShell.vue'
 
+import ModalCreateTeacherRate from '@/components/ModalCreateTeacherRate.vue'
+import ModalEditTeacherRate from '@/components/ModalEditTeacherRate.vue'
+import ModalCreateTariff from '@/components/ModalCreateTariff.vue'
+import ModalEditTariff from '@/components/ModalEditTariff.vue'
+import ModalEditSalary from '@/components/ModalEditSalary.vue'
+
 import { useAuthStore } from '@/stores/auth'
 import { useFinancesStore } from '@/stores/finances'
 import { useEmployersStore } from '@/stores/employers'
 import { useLessonsStore } from '@/stores/lessons'
+import { useSubjectsStore } from '@/stores/subjects'
 
 const authStore = useAuthStore()
 const financesStore = useFinancesStore()
 const employersStore = useEmployersStore()
 const lessonsStore = useLessonsStore()
+const subjectsStore = useSubjectsStore()
 
-const { tariffs, teacherRates, salaryPeriods } = storeToRefs(financesStore)
+const { tariffs, teacherRates, salaryRecords } = storeToRefs(financesStore)
 const { employers } = storeToRefs(employersStore)
 const { lessons } = storeToRefs(lessonsStore)
+const { subjects } = storeToRefs(subjectsStore)
 
 const activeSection = ref('tariffs')
 
-const isCreateTariffModalOpen = ref(false)
 const isCreateTeacherRateModalOpen = ref(false)
+const isEditTeacherRateModalOpen = ref(false)
+const selectedTeacherRate = ref(null)
+
+const isCreateTariffModalOpen = ref(false)
+const isEditTariffModalOpen = ref(false)
+const selectedTariff = ref(null)
+
+const isEditSalaryModalOpen = ref(false)
+const selectedSalary = ref(null)
 
 const canManageFinances = computed(() => {
   return authStore.user?.role === 'admin' || authStore.user?.role === 'manager'
 })
 
 const showAddButton = computed(() => {
-  return canManageFinances.value && activeSection.value !== 'salaries'
+  if (!canManageFinances.value) return false
+  return activeSection.value === 'tariffs' || activeSection.value === 'rates'
 })
 
 const addButtonTitle = computed(() => {
@@ -87,44 +142,75 @@ const teachersMap = computed(() => {
   }, {})
 })
 
+const teacherList = computed(() => {
+  return employers.value.filter((employer) => employer.role === 'teacher')
+})
+
+const subjectsMap = computed(() => {
+  return subjects.value.reduce((acc, subject) => {
+    acc[subject.id] = subject
+    return acc
+  }, {})
+})
+
+const subjectIdByName = computed(() => {
+  return subjects.value.reduce((acc, subject) => {
+    acc[subject.name.trim().toLowerCase()] = subject.id
+    return acc
+  }, {})
+})
+
+const salaryRecordsMap = computed(() => {
+  return salaryRecords.value.reduce((acc, record) => {
+    acc[record.teacherId] = record
+    return acc
+  }, {})
+})
+
+const todayKey = computed(() => {
+  const date = new Date()
+  return toDateKey(date)
+})
+
 const teacherRateCards = computed(() => {
   return teacherRates.value.map((rate) => {
-    const teacher = teachersMap.value[rate.teacherId]
+    const subject = subjectsMap.value[rate.subjectId]
 
     return {
       ...rate,
-      teacherName: teacher ? getPersonFullName(teacher) : 'Неизвестный преподаватель',
+      subjectTitle: subject ? subject.name.trim() : 'Предмет не найден',
     }
   })
 })
 
 const salaryCards = computed(() => {
-  return salaryPeriods.value.map((period) => {
-    const teacher = teachersMap.value[period.teacherId]
-    const teacherName = teacher ? getPersonFullName(teacher) : 'Неизвестный преподаватель'
+  return teacherList.value.map((teacher) => {
+    const salaryRecord = salaryRecordsMap.value[teacher.id] || null
+    const lastPaymentDate = salaryRecord?.lastPaymentDate || getDefaultLastPaymentDate()
+    const lastPaymentAmount = salaryRecord?.lastPaymentAmount ?? 0
+    const periodEnd = todayKey.value
 
     const lessonsInPeriod = lessons.value.filter((lesson) => {
-      if (lesson.teacherId !== period.teacherId) return false
+      if (lesson.teacherId !== teacher.id) return false
+      if (lesson.status === 'cancelled') return false
 
       const lessonStart = new Date(lesson.startAt)
-      const periodStart = new Date(`${period.periodStart}T00:00:00`)
-      const periodEnd = new Date(`${period.periodEnd}T23:59:59`)
+      const periodStartDate = new Date(`${lastPaymentDate}T00:00:00`)
+      const periodEndDate = new Date(`${periodEnd}T23:59:59`)
 
-      return lessonStart >= periodStart && lessonStart <= periodEnd
+      return lessonStart >= periodStartDate && lessonStart <= periodEndDate
     })
-
     const totalMinutes = lessonsInPeriod.reduce((sum, lesson) => {
       return sum + getLessonDurationMinutes(lesson)
     }, 0)
 
     const totalAmount = lessonsInPeriod.reduce((sum, lesson) => {
       const lessonDurationMinutes = getLessonDurationMinutes(lesson)
+      const lessonSubjectId = subjectIdByName.value[lesson.subject?.trim().toLowerCase()]
 
       const matchedRate = teacherRates.value.find((rate) => {
         return (
-          rate.teacherId === lesson.teacherId &&
-          rate.subject === lesson.subject &&
-          rate.lessonDurationMinutes === lessonDurationMinutes
+          rate.subjectId === lessonSubjectId && rate.lessonDurationMinutes === lessonDurationMinutes
         )
       })
 
@@ -132,16 +218,20 @@ const salaryCards = computed(() => {
     }, 0)
 
     return {
-      id: period.id,
-      teacherId: period.teacherId,
-      teacherName,
-      periodStart: period.periodStart,
-      periodEnd: period.periodEnd,
-      periodLabel: `${formatDate(period.periodStart)} — ${formatDate(period.periodEnd)}`,
+      id: teacher.id,
+      entityType: 'salary',
+      teacherId: teacher.id,
+      teacherName: getPersonFullName(teacher),
+      lastPaymentDate,
+      lastPaymentAmount,
+      periodStart: lastPaymentDate,
+      periodEnd,
+      periodLabel: `${formatDate(lastPaymentDate)} — ${formatDate(periodEnd)}`,
       lessonsCount: lessonsInPeriod.length,
       totalMinutes,
       totalAmount,
-      color: period.color,
+      organizationId: teacher.organizationId ?? 0,
+      color: salaryRecord?.color || '#E8E3FA',
     }
   })
 })
@@ -155,6 +245,7 @@ const tabItems = computed(() => [
 const tariffDisplayCards = computed(() => {
   return tariffs.value.map((tariff) => ({
     id: tariff.id,
+    entityType: 'tariff',
     color: tariff.color,
     title: tariff.title,
     subtitle: getFormatLabel(tariff.format),
@@ -169,12 +260,12 @@ const tariffDisplayCards = computed(() => {
 const rateDisplayCards = computed(() => {
   return teacherRateCards.value.map((rate) => ({
     id: rate.id,
+    entityType: 'rate',
     color: rate.color,
-    title: rate.teacherName,
-    subtitle: rate.subject,
+    title: rate.subjectTitle,
+    subtitle: getTeacherLevelLabel(rate.teacherLevel),
     meta: [
       { label: 'Длительность', value: `${rate.lessonDurationMinutes} мин` },
-      { label: 'Уровень', value: getTeacherLevelLabel(rate.teacherLevel) },
       { label: 'Ставка', value: `${rate.rate} ₽` },
     ],
   }))
@@ -183,13 +274,18 @@ const rateDisplayCards = computed(() => {
 const salaryDisplayCards = computed(() => {
   return salaryCards.value.map((salary) => ({
     id: salary.id,
+    entityType: 'salary',
     color: salary.color,
     title: salary.teacherName,
     subtitle: salary.periodLabel,
+    teacherId: salary.teacherId,
+    teacherName: salary.teacherName,
+    lastPaymentDate: salary.lastPaymentDate,
+    lastPaymentAmount: salary.lastPaymentAmount,
+    organizationId: salary.organizationId,
     meta: [
+      { label: 'Последняя выплата', value: `${salary.lastPaymentAmount} ₽` },
       { label: 'Проведено занятий', value: salary.lessonsCount },
-      { label: 'Оплачиваемых минут', value: salary.totalMinutes },
-      { label: 'Сумма', value: `${salary.totalAmount} ₽` },
     ],
   }))
 })
@@ -203,7 +299,7 @@ const activeCards = computed(() => {
 const emptyText = computed(() => {
   if (activeSection.value === 'tariffs') return 'Тарифов пока нет'
   if (activeSection.value === 'rates') return 'Ставок пока нет'
-  return 'Зарплатных периодов пока нет'
+  return 'Преподавателей для расчёта зарплаты пока нет'
 })
 
 function openCreateModal() {
@@ -213,6 +309,94 @@ function openCreateModal() {
 
   if (activeSection.value === 'rates') {
     isCreateTeacherRateModalOpen.value = true
+  }
+}
+
+function closeCreateTeacherRateModal() {
+  isCreateTeacherRateModalOpen.value = false
+}
+
+function openEditTeacherRateModal(rateId) {
+  const rate = teacherRates.value.find((item) => item.id === rateId)
+  if (!rate) return
+
+  selectedTeacherRate.value = { ...rate }
+  isEditTeacherRateModalOpen.value = true
+}
+
+function closeEditTeacherRateModal() {
+  isEditTeacherRateModalOpen.value = false
+  selectedTeacherRate.value = null
+}
+
+function saveTeacherRate(updatedRate) {
+  financesStore.updateTeacherRate(updatedRate)
+  closeEditTeacherRateModal()
+}
+
+function closeCreateTariffModal() {
+  isCreateTariffModalOpen.value = false
+}
+
+function openEditTariffModal(tariffId) {
+  const tariff = tariffs.value.find((item) => item.id === tariffId)
+  if (!tariff) return
+
+  selectedTariff.value = { ...tariff }
+  isEditTariffModalOpen.value = true
+}
+
+function closeEditTariffModal() {
+  isEditTariffModalOpen.value = false
+  selectedTariff.value = null
+}
+
+function saveTariff(updatedTariff) {
+  financesStore.updateTariff(updatedTariff)
+  closeEditTariffModal()
+}
+
+function openEditSalaryModal(card) {
+  selectedSalary.value = {
+    teacherId: card.teacherId,
+    teacherName: card.teacherName,
+    periodLabel: card.subtitle,
+    lastPaymentDate: card.lastPaymentDate,
+    lastPaymentAmount: card.lastPaymentAmount,
+    organizationId: card.organizationId,
+    color: card.color,
+  }
+  isEditSalaryModalOpen.value = true
+}
+
+function closeEditSalaryModal() {
+  isEditSalaryModalOpen.value = false
+  selectedSalary.value = null
+}
+
+function saveSalaryRecord(payload) {
+  financesStore.upsertSalaryRecord(payload)
+  closeEditSalaryModal()
+}
+
+function canShowEditButton(card) {
+  return (
+    canManageFinances.value &&
+    (card.entityType === 'tariff' || card.entityType === 'rate' || card.entityType === 'salary')
+  )
+}
+
+function handleEditCard(card) {
+  if (card.entityType === 'tariff') {
+    openEditTariffModal(card.id)
+  }
+
+  if (card.entityType === 'rate') {
+    openEditTeacherRateModal(card.id)
+  }
+
+  if (card.entityType === 'salary') {
+    openEditSalaryModal(card)
   }
 }
 
@@ -240,9 +424,22 @@ function getTeacherLevelLabel(level) {
   return level
 }
 
+function toDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getDefaultLastPaymentDate() {
+  const date = new Date()
+  date.setDate(1)
+  return toDateKey(date)
+}
+
 function formatDate(value) {
   const date = new Date(`${value}T00:00:00`)
-
   return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`
 }
 </script>
@@ -250,7 +447,7 @@ function formatDate(value) {
 <style scoped>
 .finance-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.9fr) auto;
   align-items: center;
   gap: 24px;
   min-height: 116px;
@@ -299,5 +496,35 @@ function formatDate(value) {
   font-size: 15px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.45);
+  transition:
+    background-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.edit-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 </style>
