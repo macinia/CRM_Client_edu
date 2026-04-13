@@ -1,21 +1,119 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat+Alternates:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
-* {
-  padding: 0;
-  margin: 0;
+
+:root {
+  --font-family: 'Montserrat Alternates', sans-serif;
+
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8f4f8;
+
+  --color-sidebar: #e6d3e7;
+  --color-sidebar-accent: #cfaad2;
+  --color-header: #ffffff;
+
+  --color-primary: #802e87;
+  --color-primary-hover: #6d2473;
+  --color-primary-soft: #efe2f0;
+
+  --color-text: #1f1721;
+  --color-text-muted: #6f6572;
+  --color-border: #dfd7e2;
+  --color-overlay: rgba(17, 12, 18, 0.35);
+
+  --color-success: #2f7d32;
+  --color-danger: #d32f2f;
+
+  --shadow-sm: 0 4px 16px rgba(33, 24, 39, 0.06);
+  --shadow-md: 0 12px 30px rgba(33, 24, 39, 0.12);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  --transition-base: 0.2s ease;
+
+  --header-height: 80px;
+  --sidebar-width: 260px;
+  --content-max-width: 1600px;
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
 body {
-  font-family: 'Montserrat Alternates', serif;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
 button {
-  font-family: 'Montserrat Alternates', serif;
   border: none;
   outline: none;
-  background-color: transparent;
+  background: transparent;
+  cursor: pointer;
 }
-input {
-  font-family: 'Montserrat Alternates', serif;
+
+input,
+textarea,
+select {
   border: none;
   outline: none;
-  background-color: transparent;
+  background: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccbccc;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b9a5ba;
 }

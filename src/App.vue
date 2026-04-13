@@ -1,17 +1,17 @@
 <template>
   <div class="app">
-    {{ authStore.user }}
     <RouterView />
   </div>
 </template>
 
 <script setup>
-import { useAuthStore } from '@/stores/auth'
 import { onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+
 onMounted(() => {
-  authStore.checkAuthUser()
+  authStore.initAuth()
 })
 </script>
 
