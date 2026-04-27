@@ -5,89 +5,83 @@
     </template>
 
     <div v-if="lesson" class="lesson-details">
-      <div class="lesson-main">
-        <div class="info-list">
-          <div class="info-row">
-            <span class="info-label">Ученик (-ца):</span>
-            <span class="info-value">{{ clientName || 'Не указан' }}</span>
-          </div>
+      <div class="info-list">
+        <div class="info-row">
+          <span class="info-label">Ученик (-ца):</span>
+          <span class="info-value">{{ clientName || 'Не указан' }}</span>
+        </div>
 
-          <div class="info-row">
-            <span class="info-label">Класс:</span>
-            <span class="info-value">
-              {{ client?.grade ?? 'Не указан' }}
-            </span>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Класс:</span>
+          <span class="info-value">
+            {{ client?.grade ?? 'Не указан' }}
+          </span>
+        </div>
 
-          <div class="info-row">
-            <span class="info-label">Преподаватель:</span>
-            <span class="info-value">{{ teacherName || 'Не указан' }}</span>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Преподаватель:</span>
+          <span class="info-value">{{ teacherName || 'Не указан' }}</span>
+        </div>
 
-          <div class="info-row">
-            <span class="info-label">Предмет:</span>
-            <span class="info-value">{{ lesson.subject || 'Не указан' }}</span>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Предмет:</span>
+          <span class="info-value">{{ lesson.subject || 'Не указан' }}</span>
+        </div>
 
-          <div class="info-row">
-            <span class="info-label">Посещение:</span>
-            <select
-              v-model="form.attendanceStatus"
-              class="attendance-select"
-              :class="attendanceClass"
-            >
-              <option value="not_selected">Не указано</option>
-              <option value="present">Присутствовал</option>
-              <option value="absent">Отсутствовал</option>
-              <option value="excused">Уваж. причина</option>
-            </select>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Посещение:</span>
+          <select
+            v-model="form.attendanceStatus"
+            class="attendance-select"
+            :class="attendanceClass"
+          >
+            <option value="not_selected">Не указано</option>
+            <option value="present">Присутствовал</option>
+            <option value="absent">Отсутствовал</option>
+            <option value="excused">Уваж. причина</option>
+          </select>
+        </div>
 
-          <div class="info-row">
-            <span class="info-label">Ссылка на занятие:</span>
-            <div class="link-block">
-              <input
-                v-model="form.meetingLink"
-                type="text"
-                class="detail-input"
-                placeholder="Вставьте ссылку"
-              />
-              <a
-                v-if="normalizedMeetingLink"
-                :href="normalizedMeetingLink"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="meeting-link"
-              >
-                Открыть ссылку
-              </a>
-            </div>
-          </div>
-
-          <div class="info-row">
-            <span class="info-label">Время занятия:</span>
-            <span class="info-value">
-              {{ formatDateTime(lesson.startAt) }} — {{ formatTime(lesson.endAt) }}
-            </span>
-          </div>
-
-          <div class="comment-block">
-            <label class="comment-label" for="lesson-comment">Комментарии:</label>
-            <textarea
-              id="lesson-comment"
-              v-model="form.comment"
-              class="comment-textarea"
-              placeholder="Добавьте комментарий по занятию"
+        <div class="info-row">
+          <span class="info-label">Ссылка на занятие:</span>
+          <div class="link-block">
+            <input
+              v-model="form.meetingLink"
+              type="text"
+              class="detail-input"
+              placeholder="Вставьте ссылку"
             />
+            <a
+              v-if="normalizedMeetingLink"
+              :href="normalizedMeetingLink"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="meeting-link"
+            >
+              Открыть ссылку
+            </a>
           </div>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">Время занятия:</span>
+          <span class="info-value">
+            {{ formatDateTime(lesson.startAt) }} — {{ formatTime(lesson.endAt) }}
+          </span>
+        </div>
+
+        <div class="comment-block">
+          <label class="comment-label" for="lesson-comment">Комментарии:</label>
+          <textarea
+            id="lesson-comment"
+            v-model="form.comment"
+            class="comment-textarea"
+            placeholder="Добавьте комментарий по занятию"
+          />
         </div>
       </div>
 
-      <div class="lesson-actions">
-        <button class="action-btn primary-btn" @click="saveLesson">Сохранить</button>
-
-        <button class="action-btn secondary-btn" @click="handleReschedule">Перенести</button>
-      </div>
+      <button class="save-btn" @click="saveLesson">Сохранить</button>
     </div>
 
     <div v-else class="empty-state">Занятие не найдено</div>
@@ -103,6 +97,7 @@ import ModalLayout from '@/components/ModalLayout.vue'
 import { useLessonsStore } from '@/stores/lessons'
 import { useClientsStore } from '@/stores/clients'
 import { useEmployersStore } from '@/stores/employers'
+import { useFinancesStore } from '@/stores/finances'
 
 const props = defineProps({
   isOpen: {
@@ -115,11 +110,12 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'reschedule'])
+const emit = defineEmits(['close'])
 
 const lessonsStore = useLessonsStore()
 const clientsStore = useClientsStore()
 const employersStore = useEmployersStore()
+const financesStore = useFinancesStore()
 
 const { clients } = storeToRefs(clientsStore)
 const { employers } = storeToRefs(employersStore)
@@ -219,6 +215,26 @@ function formatTime(dateTimeStr) {
 function saveLesson() {
   if (!lesson.value) return
 
+  const previousAttendance = lesson.value.attendanceStatus
+  const newAttendance = form.value.attendanceStatus
+
+  if (previousAttendance !== newAttendance && client.value) {
+    const tariff = lesson.value.tariffId
+      ? financesStore.tariffs.find((t) => t.id === lesson.value.tariffId)
+      : null
+
+    if (tariff && tariff.lessonsCount > 0) {
+      const pricePerLesson = tariff.price / tariff.lessonsCount
+      const currentBalance = client.value.balance ?? 0
+
+      if (newAttendance === 'present') {
+        clientsStore.updateClient({ id: client.value.id, balance: currentBalance - pricePerLesson })
+      } else if (previousAttendance === 'present') {
+        clientsStore.updateClient({ id: client.value.id, balance: currentBalance + pricePerLesson })
+      }
+    }
+  }
+
   lessonsStore.updateLesson({
     id: lesson.value.id,
     attendanceStatus: form.value.attendanceStatus,
@@ -233,23 +249,13 @@ function handleClose() {
   resetForm()
   emit('close')
 }
-
-function handleReschedule() {
-  if (!lesson.value) return
-  emit('reschedule', lesson.value)
-}
 </script>
 
 <style scoped>
 .lesson-details {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px;
-  gap: 24px;
-  align-items: start;
-}
-
-.lesson-main {
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .info-list {
@@ -371,43 +377,23 @@ function handleReschedule() {
   box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.08);
 }
 
-.lesson-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.action-btn {
+.save-btn {
+  width: 100%;
   min-height: 46px;
   padding: 0 16px;
   border-radius: 14px;
   font-size: 14px;
   font-weight: 800;
-  transition:
-    background-color var(--transition-base),
-    color var(--transition-base),
-    border-color var(--transition-base);
-}
-
-.primary-btn {
   background-color: var(--color-primary-soft);
   color: var(--color-primary);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
-.primary-btn:hover {
+.save-btn:hover {
   background-color: var(--color-primary);
   color: #ffffff;
-}
-
-.secondary-btn {
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-}
-
-.secondary-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .empty-state {

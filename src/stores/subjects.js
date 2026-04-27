@@ -24,6 +24,20 @@ export const useSubjectsStore = defineStore('subjects', {
         createdAt: '2026-04-01T12:00:00.000Z',
         updatedAt: '2026-04-01T12:00:00.000Z',
       },
+      {
+        id: 4,
+        name: 'Алгебра',
+        organizationId: 0,
+        createdAt: '2026-04-01T12:00:00.000Z',
+        updatedAt: '2026-04-01T12:00:00.000Z',
+      },
+      {
+        id: 5,
+        name: 'Литература',
+        organizationId: 0,
+        createdAt: '2026-04-01T12:00:00.000Z',
+        updatedAt: '2026-04-01T12:00:00.000Z',
+      },
     ],
   }),
 

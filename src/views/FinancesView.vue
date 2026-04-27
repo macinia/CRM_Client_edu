@@ -135,13 +135,6 @@ const addButtonTitle = computed(() => {
   return ''
 })
 
-const teachersMap = computed(() => {
-  return employers.value.reduce((acc, employer) => {
-    acc[employer.id] = employer
-    return acc
-  }, {})
-})
-
 const teacherList = computed(() => {
   return employers.value.filter((employer) => employer.role === 'teacher')
 })
@@ -192,7 +185,7 @@ const salaryCards = computed(() => {
 
     const lessonsInPeriod = lessons.value.filter((lesson) => {
       if (lesson.teacherId !== teacher.id) return false
-      if (lesson.status === 'cancelled') return false
+      if (lesson.attendanceStatus !== 'present') return false
 
       const lessonStart = new Date(lesson.startAt)
       const periodStartDate = new Date(`${lastPaymentDate}T00:00:00`)
@@ -205,15 +198,19 @@ const salaryCards = computed(() => {
     }, 0)
 
     const totalAmount = lessonsInPeriod.reduce((sum, lesson) => {
-      const lessonDurationMinutes = getLessonDurationMinutes(lesson)
-      const lessonSubjectId = subjectIdByName.value[lesson.subject?.trim().toLowerCase()]
-
-      const matchedRate = teacherRates.value.find((rate) => {
-        return (
-          rate.subjectId === lessonSubjectId && rate.lessonDurationMinutes === lessonDurationMinutes
-        )
-      })
-
+      let matchedRate
+      if (lesson.teacherRateId) {
+        matchedRate = teacherRates.value.find((rate) => rate.id === lesson.teacherRateId)
+      } else {
+        const lessonDurationMinutes = getLessonDurationMinutes(lesson)
+        const lessonSubjectId = subjectIdByName.value[lesson.subject?.trim().toLowerCase()]
+        matchedRate = teacherRates.value.find((rate) => {
+          return (
+            rate.subjectId === lessonSubjectId &&
+            rate.lessonDurationMinutes === lessonDurationMinutes
+          )
+        })
+      }
       return sum + (matchedRate ? matchedRate.rate : 0)
     }, 0)
 
@@ -283,9 +280,11 @@ const salaryDisplayCards = computed(() => {
     lastPaymentDate: salary.lastPaymentDate,
     lastPaymentAmount: salary.lastPaymentAmount,
     organizationId: salary.organizationId,
+    totalAmount: salary.totalAmount,
     meta: [
       { label: 'Последняя выплата', value: `${salary.lastPaymentAmount} ₽` },
-      { label: 'Проведено занятий', value: salary.lessonsCount },
+      { label: 'Занятий проведено', value: salary.lessonsCount },
+      { label: 'К выплате', value: `${salary.totalAmount} ₽` },
     ],
   }))
 })
@@ -362,7 +361,7 @@ function openEditSalaryModal(card) {
     teacherName: card.teacherName,
     periodLabel: card.subtitle,
     lastPaymentDate: card.lastPaymentDate,
-    lastPaymentAmount: card.lastPaymentAmount,
+    lastPaymentAmount: card.totalAmount ?? card.lastPaymentAmount,
     organizationId: card.organizationId,
     color: card.color,
   }

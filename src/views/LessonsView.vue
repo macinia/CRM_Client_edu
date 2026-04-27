@@ -363,7 +363,6 @@
       :isOpen="isOpenLessonDetails"
       :lessonId="selectedLessonId"
       @close="closeLessonDetails"
-      @reschedule="handleRescheduleLesson"
     />
   </PageLayout>
 </template>
@@ -837,10 +836,6 @@ function closeLessonDetails() {
   selectedLessonId.value = null
 }
 
-function handleRescheduleLesson(lesson) {
-  console.log('Перенести занятие', lesson)
-  closeLessonDetails()
-}
 
 function applyFreeTimeFilters() {
   freeTimeFormError.value = ''

@@ -111,7 +111,6 @@ const fields = [
       { value: 'active', label: 'Занимается' },
       { value: 'inactive', label: 'Не занимается' },
     ],
-    fullWidth: true,
   },
 ]
 

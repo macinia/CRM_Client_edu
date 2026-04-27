@@ -82,6 +82,8 @@ import UiFormBuilder from '@/components/ui/UiFormBuilder.vue'
 import { useLessonsStore } from '@/stores/lessons'
 import { useClientsStore } from '@/stores/clients'
 import { useEmployersStore } from '@/stores/employers'
+import { useFinancesStore } from '@/stores/finances'
+import { useSubjectsStore } from '@/stores/subjects'
 
 defineProps({
   isOpenModalCreateLesson: {
@@ -95,9 +97,13 @@ const emit = defineEmits(['closeModalCreateLesson'])
 const lessonsStore = useLessonsStore()
 const clientsStore = useClientsStore()
 const employersStore = useEmployersStore()
+const financesStore = useFinancesStore()
+const subjectsStore = useSubjectsStore()
 
 const { clients } = storeToRefs(clientsStore)
 const { employers } = storeToRefs(employersStore)
+const { tariffs, teacherRates } = storeToRefs(financesStore)
+const { subjects } = storeToRefs(subjectsStore)
 
 const errors = ref({})
 const formError = ref('')
@@ -128,6 +134,8 @@ function createInitialForm() {
     startDate: '',
     endDate: '',
     schedule: [createEmptyScheduleRow()],
+    tariffId: '',
+    teacherRateId: '',
     status: 'active',
     organizationId: 0,
   }
@@ -151,6 +159,23 @@ const clientOptions = computed(() => {
     label: `${client.surname} ${client.name} ${client.patronymic}`.trim(),
   }))
 })
+
+const tariffOptions = computed(() =>
+  tariffs.value.map((t) => ({
+    value: t.id,
+    label: `${t.title} — ${t.price} ₽`,
+  })),
+)
+
+const teacherRateOptions = computed(() =>
+  teacherRates.value.map((r) => {
+    const subject = subjects.value.find((s) => s.id === r.subjectId)
+    return {
+      value: r.id,
+      label: `${subject?.name ?? 'Предмет'} — ${r.lessonDurationMinutes} мин — ${r.rate} ₽`,
+    }
+  }),
+)
 
 const subjectOptions = computed(() => {
   if (form.value.teacherId) {
@@ -200,6 +225,24 @@ const fields = computed(() => [
     placeholder: 'Выберите предмет',
     required: true,
     options: subjectOptions.value,
+    fullWidth: true,
+  },
+  {
+    name: 'tariffId',
+    label: 'Тариф (для ученика)',
+    type: 'select',
+    placeholder: 'Выберите тариф',
+    required: true,
+    options: tariffOptions.value,
+    fullWidth: true,
+  },
+  {
+    name: 'teacherRateId',
+    label: 'Ставка (для преподавателя)',
+    type: 'select',
+    placeholder: 'Выберите ставку',
+    required: true,
+    options: teacherRateOptions.value,
     fullWidth: true,
   },
   {
@@ -273,6 +316,14 @@ function validateForm() {
     errors.value.endDate = 'Укажите дату окончания'
   }
 
+  if (!form.value.tariffId) {
+    errors.value.tariffId = 'Выберите тариф'
+  }
+
+  if (!form.value.teacherRateId) {
+    errors.value.teacherRateId = 'Выберите ставку'
+  }
+
   if (Object.keys(errors.value).length > 0) {
     return false
   }
@@ -328,6 +379,8 @@ function createLessonSeries() {
       startTime: row.startTime,
       endTime: row.endTime,
     })),
+    tariffId: Number(form.value.tariffId),
+    teacherRateId: Number(form.value.teacherRateId),
     status: 'active',
     organizationId: form.value.organizationId,
   })
