@@ -1,7 +1,7 @@
 <template>
-  <ModalLayout :IsOpen="IsOpenModalCreateEmployer" @close="handleClose">
+  <ModalLayout :IsOpen="isOpenModalEditEmployer" @close="handleClose">
     <template #header>
-      <span>Новый сотрудник</span>
+      <span>Редактирование сотрудника</span>
     </template>
 
     <UiFormBuilder
@@ -9,9 +9,9 @@
       :fields="fields"
       :errors="errors"
       :form-error="formError"
-      submit-label="Создать сотрудника"
+      submit-label="Сохранить изменения"
       :columns="2"
-      @submit="createEmployer"
+      @submit="updateEmployer"
     >
       <template #after-fields>
         <div v-if="form.role === 'teacher'" class="subjects-block">
@@ -58,17 +58,19 @@
 import { ref, watch } from 'vue'
 import ModalLayout from './ModalLayout.vue'
 import UiFormBuilder from '@/components/ui/UiFormBuilder.vue'
-import { useEmployersStore } from '@/stores/employers'
 
-defineProps({
-  IsOpenModalCreateEmployer: {
+const props = defineProps({
+  isOpenModalEditEmployer: {
     type: Boolean,
     required: true,
   },
+  employerData: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
-const emit = defineEmits(['closeModalCreateEmployer'])
-const employersStore = useEmployersStore()
+const emit = defineEmits(['closeModalEditEmployer', 'saveEmployer'])
 
 const fields = [
   {
@@ -140,6 +142,7 @@ const fields = [
 ]
 
 const createInitialForm = () => ({
+  id: null,
   surname: '',
   name: '',
   patronymic: '',
@@ -160,6 +163,37 @@ const errors = ref({})
 const formError = ref('')
 
 watch(
+  () => props.employerData,
+  (value) => {
+    errors.value = {}
+    formError.value = ''
+
+    if (!value || !Object.keys(value).length) {
+      form.value = createInitialForm()
+      return
+    }
+
+    form.value = {
+      id: value.id ?? null,
+      surname: value.surname ?? '',
+      name: value.name ?? '',
+      patronymic: value.patronymic ?? '',
+      email: value.email ?? '',
+      phone: value.phone ?? '',
+      timezone: value.timezone ?? '+3',
+      role: value.role ?? '',
+      color: value.color ?? '#802e87',
+      notes: value.notes ?? '',
+      subjects: Array.isArray(value.subjects) && value.subjects.length ? [...value.subjects] : [''],
+      grades: Array.isArray(value.grades) ? [...value.grades] : [],
+      status: value.status ?? 'active',
+      organizationId: value.organizationId ?? 0,
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+watch(
   () => form.value.role,
   (role) => {
     if (role === 'teacher') {
@@ -173,15 +207,14 @@ watch(
   },
 )
 
-function resetForm() {
-  form.value = createInitialForm()
+function resetErrors() {
   errors.value = {}
   formError.value = ''
 }
 
 function handleClose() {
-  resetForm()
-  emit('closeModalCreateEmployer')
+  resetErrors()
+  emit('closeModalEditEmployer')
 }
 
 function addSubject() {
@@ -237,7 +270,7 @@ function validateForm() {
   return Object.keys(errors.value).length === 0 && !formError.value
 }
 
-function createEmployer() {
+function updateEmployer() {
   if (!validateForm()) {
     if (!formError.value) {
       formError.value = 'Проверьте заполнение полей формы'
@@ -245,15 +278,13 @@ function createEmployer() {
     return
   }
 
-  employersStore.createEmployer({
+  emit('saveEmployer', {
     ...form.value,
     subjects:
       form.value.role === 'teacher'
         ? form.value.subjects.filter((subject) => subject.trim() !== '')
         : [],
   })
-
-  handleClose()
 }
 </script>
 

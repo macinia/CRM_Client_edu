@@ -1,40 +1,63 @@
 <template>
-  <div class="page">
-    <div class="header">
-      <h1 class="logo">EduKrismash</h1>
-    </div>
-    <div class="main">
-      <div class="form">
-        <h2 class="form-header">Регистрация</h2>
-
-        <div v-for="field in formFields" :key="field.id" class="Input-item">
-          <label :for="field.id">{{ field.label }}</label>
-          <input
-            :type="field.type"
-            :id="field.id"
-            v-model="newUser[field.model]"
-            :placeholder="field.placeholder"
-          />
-
-          <div v-if="errors[field.model]" class="error-message">
-            {{ errors[field.model] }}
-          </div>
-        </div>
-
-        <p class="reg-info">
-          Вы уже зарегистрированы?
-          <router-link class="link" to="/"> Войдите в аккаунт </router-link>
+  <div class="auth-page">
+    <div class="auth-layout registration-layout">
+      <section class="auth-brand">
+        <div class="brand-badge">Создание администратора</div>
+        <h1 class="brand-title">EduKrismash</h1>
+        <p class="brand-text">
+          Зарегистрируйте основной аккаунт и начните работать с CRM онлайн-школы.
         </p>
-        <button class="reg-btn" @click="handleRegister">Зарегистрироваться</button>
-      </div>
+      </section>
+
+      <section class="auth-card">
+        <form class="auth-form" @submit.prevent="handleRegister">
+          <div class="form-top">
+            <h2 class="form-title">Регистрация</h2>
+            <p class="form-subtitle">Заполните данные администратора для первого входа</p>
+          </div>
+
+          <div class="form-grid">
+            <div
+              v-for="field in formFields"
+              :key="field.id"
+              :class="['form-field', { 'full-width': isWideField(field.model) }]"
+            >
+              <label :for="field.id" class="form-label">{{ field.label }}</label>
+
+              <input
+                :id="field.id"
+                v-model="newUser[field.model]"
+                :type="field.type"
+                :placeholder="field.placeholder"
+                class="form-input"
+              />
+
+              <div v-if="errors[field.model]" class="error-message">
+                {{ errors[field.model] }}
+              </div>
+            </div>
+          </div>
+
+          <div v-if="errors.form" class="error-message form-error">
+            {{ errors.form }}
+          </div>
+
+          <button class="submit-btn" type="submit">Зарегистрироваться</button>
+
+          <p class="bottom-text">
+            Вы уже зарегистрированы?
+            <router-link class="bottom-link" to="/"> Войдите в аккаунт </router-link>
+          </p>
+        </form>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -51,8 +74,7 @@ const newUser = ref({
 
 const errors = ref({})
 
-// Массив с конфигурацией полей формы
-const formFields = ref([
+const formFields = [
   {
     id: 'surname',
     label: 'Фамилия',
@@ -109,58 +131,43 @@ const formFields = ref([
     placeholder: 'Повторите пароль',
     required: true,
   },
-])
+]
+
+const isWideField = (model) => {
+  return ['email', 'password', 'confirmPassword'].includes(model)
+}
 
 const validateForm = () => {
   errors.value = {}
 
-  formFields.value.forEach((field) => {
+  formFields.forEach((field) => {
     if (field.required && !newUser.value[field.model]?.trim()) {
       errors.value[field.model] = `Поле "${field.label}" обязательно для заполнения`
     }
   })
 
-  // Валидация email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (newUser.value.email && !emailRegex.test(newUser.value.email)) {
     errors.value.email = 'Введите корректный email адрес'
   }
 
-  // Валидация телефона
-  const phoneRegex = /^(\+7|8)[\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$/
-  if (newUser.value.phone && !phoneRegex.test(newUser.value.phone.replace(/\s/g, ''))) {
+  const phoneDigits = newUser.value.phone.replace(/\D/g, '')
+  if (newUser.value.phone && !/^7\d{10}$|^8\d{10}$/.test(phoneDigits)) {
     errors.value.phone = 'Введите корректный номер телефона'
   }
 
-  // Валидация пароля
   if (newUser.value.password && newUser.value.password.length < 6) {
     errors.value.password = 'Пароль должен содержать минимум 6 символов'
   }
 
-  // Проверка совпадения паролей
   if (newUser.value.password !== newUser.value.confirmPassword) {
     errors.value.confirmPassword = 'Пароли не совпадают'
   }
 
-  return {
-    isValid: Object.keys(errors.value).length === 0,
-    errors: errors.value,
-  }
+  return Object.keys(errors.value).length === 0
 }
 
-const handleRegister = async () => {
-  const validation = validateForm()
-
-  if (!validation.isValid) {
-    console.log('Ошибки валидации:', validation.errors)
-    return
-  }
-
-  const userData = { ...newUser.value, role: 'admin' }
-
-  delete userData.confirmPassword
-
-  await authStore.registerUser(userData)
+const resetForm = () => {
   newUser.value = {
     surname: '',
     name: '',
@@ -170,106 +177,216 @@ const handleRegister = async () => {
     password: '',
     confirmPassword: '',
   }
+}
+
+const handleRegister = async () => {
+  const isValid = validateForm()
+
+  if (!isValid) {
+    return
+  }
+
+  const userData = {
+    surname: newUser.value.surname,
+    name: newUser.value.name,
+    patronymic: newUser.value.patronymic,
+    email: newUser.value.email,
+    phone: newUser.value.phone,
+    password: newUser.value.password,
+    role: 'admin',
+  }
+
+  const result = await authStore.registerUser(userData)
+
+  if (!result.success) {
+    errors.value.form = result.message
+    return
+  }
+
+  resetForm()
   router.push('/company')
 }
 </script>
 
 <style scoped>
-.header {
-  padding: 40px 100px 8px 100px;
-  border-bottom: 2px solid #802e87;
-}
-.logo {
-  font-weight: 500;
-  font-size: 40px;
-}
-.main {
-  width: 100%;
-}
-
-.form-header {
-  margin-bottom: 30px;
-  font-size: 40px;
-  text-align: start;
-  width: 100%;
-}
-
-.form {
-  width: 900px;
-  margin: 0px auto;
-  padding-top: 48px;
+.auth-page {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(128, 46, 135, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(128, 46, 135, 0.1), transparent 26%),
+    var(--color-bg);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding-bottom: 48px;
+  justify-content: center;
 }
 
-.Input-item {
+.auth-layout {
+  width: 100%;
+  max-width: 1240px;
+  min-height: 760px;
+  display: grid;
+  grid-template-columns: 1fr 620px;
+  border-radius: 32px;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-brand {
+  padding: 56px;
+  background: linear-gradient(145deg, #f4e9f5 0%, #ead9ec 100%);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-  width: 100%;
+  justify-content: center;
+  gap: 18px;
 }
 
-.Input-item label {
-  font-size: 24px;
+.brand-badge {
+  width: fit-content;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(128, 46, 135, 0.1);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.brand-title {
+  font-size: 52px;
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--color-text);
+}
+
+.brand-text {
+  max-width: 460px;
+  font-size: 18px;
   font-weight: 500;
+  line-height: 1.55;
+  color: var(--color-text-muted);
 }
 
-.Input-item input,
-.Input-item select,
-.Input-item textarea {
+.auth-card {
+  padding: 36px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-form {
   width: 100%;
-  padding: 16px 14px;
-  font-size: 16px;
-  border: 1px solid #802e87;
-  border-radius: 17px;
-  background-color: #f5f5f5;
-  outline: none;
-  transition: border-color 0.3s;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
 }
 
-.Input-item input:focus,
-.Input-item select:focus,
-.Input-item textarea:focus {
-  border-color: #5d1e5e;
+.form-top {
+  margin-bottom: 28px;
+}
+
+.form-title {
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.form-subtitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.form-input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  font-size: 15px;
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(128, 46, 135, 0.08);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .error-message {
-  color: #d32f2f;
-  font-size: 14px;
-  margin-top: 4px;
-  margin-left: 4px;
-}
-
-.reg-info {
-  align-items: center;
-  margin: 0px auto;
-  width: fit-content;
-  font-size: 26px;
-  font-weight: 400;
-  margin-bottom: 20px;
-}
-.link {
+  font-size: 13px;
   font-weight: 600;
-  color: #802e87;
-  text-decoration: none;
+  color: var(--color-danger);
 }
 
-.reg-btn {
-  padding: 18px 36px;
-  font-size: 30px;
-  font-weight: bold;
-  color: black;
-  background-color: #d9bddb;
-  border: 2px solid #802e87;
-  border-radius: 36px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+.form-error {
+  margin-top: 16px;
 }
 
-.reg-btn:hover {
-  background-color: #bf92c2;
+.submit-btn {
+  margin-top: 18px;
+  min-height: 52px;
+  border-radius: 14px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  transition:
+    background-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.submit-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.bottom-text {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.bottom-link {
+  color: var(--color-primary);
+  font-weight: 800;
 }
 </style>
